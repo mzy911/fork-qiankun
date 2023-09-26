@@ -64,16 +64,19 @@ async function validateSingularMode<T extends ObjectType>(
 
 const supportShadowDOM = !!document.head.attachShadow || !!(document.head as any).createShadowRoot;
 
+// 创建微应用的 Element
 function createElement(
   appContent: string,
   strictStyleIsolation: boolean,
   scopedCSS: boolean,
   appInstanceId: string,
 ): HTMLElement {
+  // 使用 div 包装 appContent
   const containerElement = document.createElement('div');
   containerElement.innerHTML = appContent;
-  // appContent always wrapped with a singular div
   const appElement = containerElement.firstChild as HTMLElement;
+
+  // 严格的样式隔离模式
   if (strictStyleIsolation) {
     if (!supportShadowDOM) {
       console.warn(
@@ -82,19 +85,26 @@ function createElement(
     } else {
       const { innerHTML } = appElement;
       appElement.innerHTML = '';
+
+      // 沙箱模型：利用 Element.attachShadow()
       let shadow: ShadowRoot;
 
+      // 支持 attachShadow
       if (appElement.attachShadow) {
+        // 给指定的元素挂载一个 Shadow DOM，并且返回对 ShadowRoot 的引用。
         shadow = appElement.attachShadow({ mode: 'open' });
       } else {
-        // createShadowRoot was proposed in initial spec, which has then been deprecated
+        // 不支持：attachShadow
+        // createShadowRoot是在最初的规范中提出的，后来被弃用了
         shadow = (appElement as any).createShadowRoot();
       }
+
       shadow.innerHTML = innerHTML;
     }
   }
 
   if (scopedCSS) {
+    // 给 appElement 设置 'data-qiankun' 属性
     const attr = appElement.getAttribute(css.QiankunCSSRewriteAttr);
     if (!attr) {
       appElement.setAttribute(css.QiankunCSSRewriteAttr, appInstanceId);
@@ -241,15 +251,18 @@ let prevAppUnmountedDeferred: Deferred<void>;
 
 export type ParcelConfigObjectGetter = (remountContainer?: string | HTMLElement) => ParcelConfigObject;
 
+// 加载微应用
 export async function loadApp<T extends ObjectType>(
   app: LoadableApp<T>,
   configuration: FrameworkConfiguration = {},
   lifeCycles?: FrameworkLifeCycles<T>,
 ): Promise<ParcelConfigObjectGetter> {
   const { entry, name: appName } = app;
+  // 根据 appName 返回应用对应的 idName
   const appInstanceId = genAppInstanceIdByName(appName);
-
   const markName = `[qiankun] App ${appInstanceId} Loading`;
+
+  // 在 performance 上打标记
   if (process.env.NODE_ENV === 'development') {
     performanceMark(markName);
   }
@@ -262,20 +275,24 @@ export async function loadApp<T extends ObjectType>(
     ...importEntryOpts
   } = configuration;
 
-  // get the entry html content and script executor
+  /**
+   * 依赖 import-html-entry 第三方库
+   * 1、将 html 做为入口文件
+   * 2、importHTML(url, opts = {})
+   */
   const { template, execScripts, assetPublicPath, getExternalScripts } = await importEntry(entry, importEntryOpts);
-  // trigger external scripts loading to make sure all assets are ready before execScripts calling
+
+  // 触发外部脚本加载，以确保在execScripts调用之前所有资产都准备好了
   await getExternalScripts();
 
-  // as single-spa load and bootstrap new app parallel with other apps unmounting
-  // (see https://github.com/CanopyTax/single-spa/blob/master/src/navigation/reroute.js#L74)
-  // we need wait to load the app until all apps are finishing unmount in singular mode
+  // 作为单spa加载和引导新应用程序与其他应用程序卸载并行
+  // 我们需要等待加载应用程序，直到所有应用程序都在单一模式下完成卸载
   if (await validateSingularMode(singular, app)) {
     await (prevAppUnmountedDeferred && prevAppUnmountedDeferred.promise);
   }
 
+  // 沙箱模型
   const appContent = getDefaultTplWrapper(appInstanceId, sandbox)(template);
-
   const strictStyleIsolation = typeof sandbox === 'object' && !!sandbox.strictStyleIsolation;
 
   if (process.env.NODE_ENV === 'development' && strictStyleIsolation) {
@@ -285,6 +302,7 @@ export async function loadApp<T extends ObjectType>(
   }
 
   const scopedCSS = isEnableScopedCSS(sandbox);
+
   let initialAppWrapperElement: HTMLElement | null = createElement(
     appContent,
     strictStyleIsolation,

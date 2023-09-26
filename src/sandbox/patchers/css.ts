@@ -5,12 +5,12 @@
 
 // https://developer.mozilla.org/en-US/docs/Web/API/CSSRule
 enum RuleType {
-  // type: rule will be rewrote
+  // type: 规则将被重写
   STYLE = 1,
   MEDIA = 4,
   SUPPORTS = 12,
 
-  // type: value will be kept
+  // type: 值将被保留
   IMPORT = 3,
   FONT_FACE = 5,
   PAGE = 6,
@@ -22,19 +22,22 @@ const arrayify = <T>(list: CSSRuleList | any[]) => {
   return [].slice.call(list, 0) as T[];
 };
 
+/**
+ * ScopedCSS
+ * 1、接口提供了特殊的属性（除了它们继承的常规的HTMLElement接口）以外
+ * 2、可以处理 body 元素
+ */
 const rawDocumentBodyAppend = HTMLBodyElement.prototype.appendChild;
 
+// css 沙箱
 export class ScopedCSS {
   private static ModifiedTag = 'Symbol(style-modified-qiankun)';
-
   private sheet: StyleSheet;
-
   private swapNode: HTMLStyleElement;
 
   constructor() {
     const styleNode = document.createElement('style');
     rawDocumentBodyAppend.call(document.body, styleNode);
-
     this.swapNode = styleNode;
     this.sheet = styleNode.sheet!;
     this.sheet.disabled = true;
@@ -196,7 +199,7 @@ export const process = (
   stylesheetElement: HTMLStyleElement | HTMLLinkElement,
   appName: string,
 ): void => {
-  // lazy singleton pattern
+  // 惰性单例模式
   if (!processor) {
     processor = new ScopedCSS();
   }

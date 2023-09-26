@@ -21,6 +21,7 @@ export let frameworkConfiguration: FrameworkConfiguration = {};
 let started = false;
 const defaultUrlRerouteOnly = true;
 
+// 返回一个 Promise 类
 const frameworkStartedDefer = new Deferred<void>();
 
 const autoDowngradeForLowVersionBrowser = (configuration: FrameworkConfiguration): FrameworkConfiguration => {
@@ -56,18 +57,23 @@ const autoDowngradeForLowVersionBrowser = (configuration: FrameworkConfiguration
   return configuration;
 };
 
+/**
+ * 主应用批量注册微应用
+ * @param apps
+ * @param lifeCycles
+ */
 export function registerMicroApps<T extends ObjectType>(
   apps: Array<RegistrableApp<T>>,
   lifeCycles?: FrameworkLifeCycles<T>,
 ) {
-  // Each app only needs to be registered once
+  // 每个应用程序只需要注册一次
   const unregisteredApps = apps.filter((app) => !microApps.some((registeredApp) => registeredApp.name === app.name));
-
   microApps = [...microApps, ...unregisteredApps];
 
   unregisteredApps.forEach((app) => {
     const { name, activeRule, loader = noop, props, ...appConfig } = app;
 
+    // 注册微应用
     registerApplication({
       name,
       app: async () => {

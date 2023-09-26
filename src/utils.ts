@@ -140,17 +140,18 @@ export const isConstDestructAssignmentSupported = memoize(() => {
 
 export const qiankunHeadTagName = 'qiankun-head';
 
+// 动态制作沙箱
 export function getDefaultTplWrapper(name: string, sandboxOpts: FrameworkConfiguration['sandbox']) {
   return (tpl: string) => {
     let tplWithSimulatedHead: string;
 
     if (tpl.indexOf('<head>') !== -1) {
-      // We need to mock a head placeholder as native head element will be erased by browser in micro app
+      // 我们需要模拟一个头部占位符，因为在微应用中，原生头部元素会被浏览器删除
       tplWithSimulatedHead = tpl
         .replace('<head>', `<${qiankunHeadTagName}>`)
         .replace('</head>', `</${qiankunHeadTagName}>`);
     } else {
-      // Some template might not be a standard html document, thus we need to add a simulated head tag for them
+      // 有些模板可能不是标准的html文档，因此我们需要为它们添加模拟的头部标记
       tplWithSimulatedHead = `<${qiankunHeadTagName}></${qiankunHeadTagName}>${tpl}`;
     }
 
@@ -162,10 +163,12 @@ export function getDefaultTplWrapper(name: string, sandboxOpts: FrameworkConfigu
   };
 }
 
+// 将 idName 转为沙箱 id
 export function getWrapperId(name: string) {
   return `__qiankun_microapp_wrapper_for_${snakeCase(name)}__`;
 }
 
+// 创建一个空对象
 export const nativeGlobal = new Function('return this')();
 
 export const nativeDocument = new Function('return document')();
@@ -182,18 +185,19 @@ const getGlobalAppInstanceMap = once<() => Record<string, number>>(() => {
 
   return nativeGlobal.__app_instance_name_map__;
 });
-/**
- * Get app instance name with the auto-increment approach
- * @param appName
- */
+
+// 使用自动增量方法获取应用实例名称
 export const genAppInstanceIdByName = (appName: string): string => {
   const globalAppInstanceMap = getGlobalAppInstanceMap();
+
+  // 不存在直接返回：appName
   if (!(appName in globalAppInstanceMap)) {
     nativeGlobal.__app_instance_name_map__[appName] = 0;
     return appName;
   }
-
   globalAppInstanceMap[appName]++;
+
+  // 存在返回：appName_n
   return `${appName}_${globalAppInstanceMap[appName]}`;
 };
 
@@ -218,6 +222,11 @@ export class Deferred<T> {
   }
 }
 
+/**
+ * Performance：获取到当前页面中与性能相关的信息
+ * @mark：创建标记
+ * @clearMarks：清除标记
+ */
 const supportsUserTiming =
   typeof performance !== 'undefined' &&
   typeof performance.mark === 'function' &&
