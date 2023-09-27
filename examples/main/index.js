@@ -19,6 +19,7 @@ const loader = (loading) => render({ loading });
  * Step2 注册子应用
  */
 
+
 registerMicroApps(
   [
     {

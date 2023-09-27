@@ -24,12 +24,14 @@ const defaultUrlRerouteOnly = true;
 // 返回一个 Promise 类
 const frameworkStartedDefer = new Deferred<void>();
 
+// 自动降级低版本浏览器
 const autoDowngradeForLowVersionBrowser = (configuration: FrameworkConfiguration): FrameworkConfiguration => {
   const { sandbox = true, singular } = configuration;
   if (sandbox) {
     if (!window.Proxy) {
       console.warn('[qiankun] Missing window.Proxy, proxySandbox will degenerate into snapshotSandbox');
 
+      // 快照沙箱不支持非 singular 模式
       if (singular === false) {
         console.warn(
           '[qiankun] Setting singular as false may cause unexpected behavior while your browser not support window.Proxy',
@@ -58,28 +60,43 @@ const autoDowngradeForLowVersionBrowser = (configuration: FrameworkConfiguration
 };
 
 /**
- * 主应用批量注册微应用
- * @param apps
- * @param lifeCycles
+ * 注册微应用，基于路由配置
+ * @param apps = [
+ *  {
+ *    name: 'react16',
+ *    entry: '//localhost:7100',
+ *    container: '#subapp-viewport',
+ *    loader,
+ *    activeRule: '/react16'
+ *  },
+ *  ...
+ * ]
+ * @param lifeCycles = { ...各个生命周期方法对象 }
  */
 export function registerMicroApps<T extends ObjectType>(
   apps: Array<RegistrableApp<T>>,
   lifeCycles?: FrameworkLifeCycles<T>,
 ) {
-  // 每个应用程序只需要注册一次
+  // 防止微应用重复注册，得到所有没有被注册的微应用列表
   const unregisteredApps = apps.filter((app) => !microApps.some((registeredApp) => registeredApp.name === app.name));
   microApps = [...microApps, ...unregisteredApps];
 
+  // 注册每一个微应用
   unregisteredApps.forEach((app) => {
     const { name, activeRule, loader = noop, props, ...appConfig } = app;
 
-    // 注册微应用
+    // 调用 single-spa 的 registerApplication 方法注册微应用
     registerApplication({
       name,
+      // 微应用的加载方法，Promise<生命周期方法组成的对象>
       app: async () => {
         loader(true);
+
+        // 目的是在 single-spa 执行这个加载方法时让出线程，让其它微应用的加载方法都开始执行
         await frameworkStartedDefer.promise;
 
+        // 核心：负责加载微应用，返回 bootstrap、mount、unmount、update 生命周期
+        // frameworkConfiguration：start 方法执行时设置的配置对象
         const { mount, ...otherMicroAppConfigs } = (
           await loadApp({ name, props, ...appConfig }, frameworkConfiguration, lifeCycles)
         )();
@@ -89,7 +106,9 @@ export function registerMicroApps<T extends ObjectType>(
           ...otherMicroAppConfigs,
         };
       },
+      // 微应用的激活条件
       activeWhen: activeRule,
+      // 传递给微应用的 props
       customProps: props,
     });
   });
@@ -98,6 +117,7 @@ export function registerMicroApps<T extends ObjectType>(
 const appConfigPromiseGetterMap = new Map<string, Promise<ParcelConfigObjectGetter>>();
 const containerMicroAppsMap = new Map<string, MicroApp[]>();
 
+// 手动注册、卸载微应用
 export function loadMicroApp<T extends ObjectType>(
   app: LoadableApp<T>,
   configuration?: FrameworkConfiguration & { autoStart?: boolean },
@@ -106,8 +126,8 @@ export function loadMicroApp<T extends ObjectType>(
   const { props, name } = app;
 
   const container = 'container' in app ? app.container : undefined;
-  // Must compute the container xpath at beginning to keep it consist around app running
-  // If we compute it every time, the container dom structure most probably been changed and result in a different xpath value
+  // 必须在开始时计算容器xpath以保持其围绕应用程序运行吗
+  // 如果我们每次都计算它，则容器dom结构很可能被更改，从而产生不同的xpath值
   const containerXPath = getContainerXPath(container);
   const appContainerXPathKey = `${name}-${containerXPath}`;
 
@@ -120,8 +140,7 @@ export function loadMicroApp<T extends ObjectType>(
         if (containerMicroApps?.length) {
           const mount = [
             async () => {
-              // While there are multiple micro apps mounted on the same container, we must wait until the prev instances all had unmounted
-              // Otherwise it will lead some concurrent issues
+              // 虽然在同一个容器上挂载了多个微应用程序，但我们必须等到前面的实例都卸载了，否则会导致一些并发问题
               const prevLoadMicroApps = containerMicroApps.slice(0, containerMicroApps.indexOf(microApp));
               const prevLoadMicroAppsWhichNotBroken = prevLoadMicroApps.filter(
                 (v) => v.getStatus() !== 'LOAD_ERROR' && v.getStatus() !== 'SKIP_BECAUSE_BROKEN',
@@ -141,7 +160,7 @@ export function loadMicroApp<T extends ObjectType>(
 
     return {
       ...microAppConfig,
-      // empty bootstrap hook which should not run twice while it calling from cached micro app
+      // 空的引导钩子，当它从缓存的微应用调用时不应该运行两次
       bootstrap: () => Promise.resolve(),
     };
   };
@@ -214,15 +233,22 @@ export function loadMicroApp<T extends ObjectType>(
 }
 
 export function start(opts: FrameworkConfiguration = {}) {
+  // 框架默认开启预加载、单例模式、样式沙箱
   frameworkConfiguration = { prefetch: true, singular: true, sandbox: true, ...opts };
+
+  // 从这里可以看出 start 方法支持的参数不止官网文档说的那些，比如 urlRerouteOnly，这个是 single-spa 的 start 方法支持的
   const { prefetch, urlRerouteOnly = defaultUrlRerouteOnly, ...importEntryOpts } = frameworkConfiguration;
 
+  // 预加载
   if (prefetch) {
+    // 执行预加载策略，参数分别为微应用列表、预加载策略、{ fetch、getPublicPath、getTemplate }
     doPrefetchStrategy(microApps, prefetch, importEntryOpts);
   }
 
+  // 自动降级低版本浏览器
   frameworkConfiguration = autoDowngradeForLowVersionBrowser(frameworkConfiguration);
 
+  // 执行 single-spa 的 start 方法，启动 single-spa
   startSingleSpa({ urlRerouteOnly });
   started = true;
 

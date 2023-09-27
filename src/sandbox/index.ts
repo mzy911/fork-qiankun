@@ -16,10 +16,10 @@ export { css } from './patchers';
  *
  * 沙箱分两个类型：
  * 1. app 环境沙箱
- *  app 环境沙箱是指应用初始化过之后，应用会在什么样的上下文环境运行。每个应用的环境沙箱只会初始化一次，因为子应用只会触发一次 bootstrap 。
+ *    app 环境沙箱是指应用初始化过之后，应用会在什么样的上下文环境运行。每个应用的环境沙箱只会初始化一次，因为子应用只会触发一次 bootstrap 。
  *  子应用在切换时，实际上切换的是 app 环境沙箱。
  * 2. render 沙箱
- *  子应用在 app mount 开始前生成好的的沙箱。每次子应用切换过后，render 沙箱都会重现初始化。
+ *    子应用在 app mount 开始前生成好的的沙箱。每次子应用切换过后，render 沙箱都会重现初始化。
  *
  * 这么设计的目的是为了保证每个子应用切换回来之后，还能运行在应用 bootstrap 之后的环境下。
  *
@@ -49,7 +49,7 @@ export function createSandboxContainer(
     sandbox = new SnapshotSandbox(appName);
   }
 
-  // some side effect could be invoked while bootstrapping, such as dynamic stylesheet injection with style-loader, especially during the development phase
+  // 在引导过程中可能会调用一些副作用，例如使用样式加载器进行动态样式表注入，特别是在开发阶段
   const bootstrappingFreers = patchAtBootstrapping(
     appName,
     elementGetter,
@@ -58,9 +58,8 @@ export function createSandboxContainer(
     excludeAssetFilter,
     speedySandBox,
   );
-  // mounting freers are one-off and should be re-init at every mounting time
+  // 挂载自由器是一次性的，应该在每次挂载时重新初始化
   let mountingFreers: Freer[] = [];
-
   let sideEffectsRebuilders: Rebuilder[] = [];
 
   return {
@@ -73,14 +72,13 @@ export function createSandboxContainer(
      */
     async mount() {
       /* ------------------------------------------ 因为有上下文依赖（window），以下代码执行顺序不能变 ------------------------------------------ */
-
       /* ------------------------------------------ 1. 启动/恢复 沙箱------------------------------------------ */
       sandbox.active();
 
       const sideEffectsRebuildersAtBootstrapping = sideEffectsRebuilders.slice(0, bootstrappingFreers.length);
       const sideEffectsRebuildersAtMounting = sideEffectsRebuilders.slice(bootstrappingFreers.length);
 
-      // must rebuild the side effects which added at bootstrapping firstly to recovery to nature state
+      // 必须先重建启动时增加的副作用才能恢复到自然状态吗
       if (sideEffectsRebuildersAtBootstrapping.length) {
         sideEffectsRebuildersAtBootstrapping.forEach((rebuild) => rebuild());
       }
@@ -95,7 +93,7 @@ export function createSandboxContainer(
         sideEffectsRebuildersAtMounting.forEach((rebuild) => rebuild());
       }
 
-      // clean up rebuilders
+      // 清理重建者
       sideEffectsRebuilders = [];
     },
 
@@ -103,8 +101,8 @@ export function createSandboxContainer(
      * 恢复 global 状态，使其能回到应用加载之前的状态
      */
     async unmount() {
-      // record the rebuilders of window side effects (event listeners or timers)
-      // note that the frees of mounting phase are one-off as it will be re-init at next mounting
+      // 记录窗口副作用的重建者
+      // 请注意，挂载阶段的释放是一次性的，因为它将在下一次挂载时重新初始化
       sideEffectsRebuilders = [...bootstrappingFreers, ...mountingFreers].map((free) => free());
 
       sandbox.inactive();

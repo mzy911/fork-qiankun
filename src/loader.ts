@@ -43,6 +43,7 @@ function assertElementExist(element: Element | null | undefined, msg?: string) {
   }
 }
 
+// 执行回调函数
 function execHooksChain<T extends ObjectType>(
   hooks: Array<LifeCycleFn<T>>,
   app: LoadableApp<T>,
@@ -76,7 +77,7 @@ function createElement(
   containerElement.innerHTML = appContent;
   const appElement = containerElement.firstChild as HTMLElement;
 
-  // 严格的样式隔离模式
+  // 样式沙箱
   if (strictStyleIsolation) {
     if (!supportShadowDOM) {
       console.warn(
@@ -119,7 +120,7 @@ function createElement(
   return appElement;
 }
 
-/** generate app wrapper dom getter */
+/** 生成应用包装器dom getter */
 function getAppWrapperGetter(
   appInstanceId: string,
   useLegacyRender: boolean,
@@ -156,11 +157,8 @@ type ElementRender = (
 ) => any;
 
 /**
- * Get the render function
- * If the legacy render function is provide, used as it, otherwise we will insert the app element to target container by qiankun
- * @param appInstanceId
- * @param appContent
- * @param legacyRender
+ * 获取渲染函数
+ * 如果提供了遗留渲染函数，就按原样使用，否则我们将通过乾坤将app元素插入目标容器
  */
 function getRender(appInstanceId: string, appContent: string, legacyRender?: HTMLContentRender) {
   const render: ElementRender = ({ element, loading, container }, phase) => {
@@ -196,7 +194,7 @@ function getRender(appInstanceId: string, appContent: string, legacyRender?: HTM
     }
 
     if (containerElement && !containerElement.contains(element)) {
-      // clear the container
+      // 清除容器
       while (containerElement!.firstChild) {
         rawRemoveChild.call(containerElement, containerElement!.firstChild);
       }
@@ -275,11 +273,10 @@ export async function loadApp<T extends ObjectType>(
     ...importEntryOpts
   } = configuration;
 
-  /**
-   * 依赖 import-html-entry 第三方库
-   * 1、将 html 做为入口文件
-   * 2、importHTML(url, opts = {})
-   */
+  // 依赖 import-html-entry 第三方库
+  // 1、将 html 做为入口文件
+  // 2、importHTML(url, opts = {})
+  // 3、返回 template、execScripts
   const { template, execScripts, assetPublicPath, getExternalScripts } = await importEntry(entry, importEntryOpts);
 
   // 触发外部脚本加载，以确保在execScripts调用之前所有资产都准备好了
@@ -291,7 +288,7 @@ export async function loadApp<T extends ObjectType>(
     await (prevAppUnmountedDeferred && prevAppUnmountedDeferred.promise);
   }
 
-  // 沙箱模型
+  // 制作 template 沙箱
   const appContent = getDefaultTplWrapper(appInstanceId, sandbox)(template);
   const strictStyleIsolation = typeof sandbox === 'object' && !!sandbox.strictStyleIsolation;
 
@@ -301,6 +298,7 @@ export async function loadApp<T extends ObjectType>(
     );
   }
 
+  // 是否启动 css 沙箱
   const scopedCSS = isEnableScopedCSS(sandbox);
 
   let initialAppWrapperElement: HTMLElement | null = createElement(
@@ -313,6 +311,7 @@ export async function loadApp<T extends ObjectType>(
   const initialContainer = 'container' in app ? app.container : undefined;
   const legacyRender = 'render' in app ? app.render : undefined;
 
+  // 获取渲染函数
   const render = getRender(appInstanceId, appContent, legacyRender);
 
   // 第一次加载设置应用可见区域 dom 结构
@@ -331,13 +330,14 @@ export async function loadApp<T extends ObjectType>(
   let mountSandbox = () => Promise.resolve();
   let unmountSandbox = () => Promise.resolve();
   const useLooseSandbox = typeof sandbox === 'object' && !!sandbox.loose;
-  // enable speedy mode by default
+
+  // 默认开启 speedy 模式
   const speedySandbox = typeof sandbox === 'object' ? sandbox.speedy !== false : true;
   let sandboxContainer;
   if (sandbox) {
     sandboxContainer = createSandboxContainer(
       appInstanceId,
-      // FIXME should use a strict sandbox logic while remount, see https://github.com/umijs/qiankun/issues/518
+      // 修复在重新挂载时应该使用严格的沙盒逻辑, see https://github.com/umijs/qiankun/issues/518
       initialAppWrapperGetter,
       scopedCSS,
       useLooseSandbox,
@@ -361,7 +361,7 @@ export async function loadApp<T extends ObjectType>(
 
   await execHooksChain(toArray(beforeLoad), app, global);
 
-  // get the lifecycle hooks from module exports
+  // 从模块导出中获取生命周期钩子
   const scriptExports: any = await execScripts(global, sandbox && !useLooseSandbox, {
     scopedGlobalVariables: speedySandbox ? cachedGlobals : [],
   });
@@ -389,7 +389,7 @@ export async function loadApp<T extends ObjectType>(
         async () => {
           if (process.env.NODE_ENV === 'development') {
             const marks = performanceGetEntriesByName(markName, 'mark');
-            // mark length is zero means the app is remounting
+            // 标记长度为零表示应用程序正在重新加载
             if (marks && !marks.length) {
               performanceMark(markName);
             }
@@ -402,7 +402,7 @@ export async function loadApp<T extends ObjectType>(
 
           return undefined;
         },
-        // initial wrapper element before app mount/remount
+        // 应用挂载/重新挂载前的初始包装器元素
         async () => {
           appWrapperElement = initialAppWrapperElement;
           appWrapperGetter = getAppWrapperGetter(
@@ -413,12 +413,12 @@ export async function loadApp<T extends ObjectType>(
             () => appWrapperElement,
           );
         },
+
         // 添加 mount hook, 确保每次应用加载前容器 dom 结构已经设置完毕
         async () => {
           const useNewContainer = remountContainer !== initialContainer;
           if (useNewContainer || !appWrapperElement) {
-            // element will be destroyed after unmounted, we need to recreate it if it not exist
-            // or we try to remount into a new container
+            // 元素在卸载后将被销毁，如果它不存在，我们需要重新创建它，或者我们尝试重新挂载到一个新的容器中
             appWrapperElement = createElement(appContent, strictStyleIsolation, scopedCSS, appInstanceId);
             syncAppWrapperElement2Sandbox(appWrapperElement);
           }
@@ -426,13 +426,15 @@ export async function loadApp<T extends ObjectType>(
           render({ element: appWrapperElement, loading: true, container: remountContainer }, 'mounting');
         },
         mountSandbox,
-        // exec the chain after rendering to keep the behavior with beforeLoad
+        // 在渲染后执行链以保持beforeLoad的行为
         async () => execHooksChain(toArray(beforeMount), app, global),
         async (props) => mount({ ...props, container: appWrapperGetter(), setGlobalState, onGlobalStateChange }),
-        // finish loading after app mounted
+
+        // 安装应用程序后完成加载
         async () => render({ element: appWrapperElement, loading: false, container: remountContainer }, 'mounted'),
         async () => execHooksChain(toArray(afterMount), app, global),
-        // initialize the unmount defer after app mounted and resolve the defer after it unmounted
+
+        // 在app挂载后初始化unmount defer，并在app卸载后解析这个defer
         async () => {
           if (await validateSingularMode(singular, app)) {
             prevAppUnmountedDeferred = new Deferred<void>();

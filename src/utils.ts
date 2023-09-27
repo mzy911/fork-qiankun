@@ -140,7 +140,7 @@ export const isConstDestructAssignmentSupported = memoize(() => {
 
 export const qiankunHeadTagName = 'qiankun-head';
 
-// 动态制作沙箱
+// 制作沙箱
 export function getDefaultTplWrapper(name: string, sandboxOpts: FrameworkConfiguration['sandbox']) {
   return (tpl: string) => {
     let tplWithSimulatedHead: string;
@@ -243,6 +243,7 @@ export function performanceGetEntriesByName(markName: string, type?: string) {
   return marks;
 }
 
+// performance：打标记
 export function performanceMark(markName: string) {
   if (supportsUserTiming) {
     performance.mark(markName);
