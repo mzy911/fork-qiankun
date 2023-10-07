@@ -65,19 +65,25 @@ async function validateSingularMode<T extends ObjectType>(
 
 const supportShadowDOM = !!document.head.attachShadow || !!(document.head as any).createShadowRoot;
 
-// 创建微应用的 Element
+/**
+ * 做了两件事
+ *  1、将 appContent 由字符串模版转换成 html dom 元素
+ *  2、如果需要开启严格样式隔离，则将 appContent 的子元素即微应用的入口模版用 shadow dom 包裹起来，达到样式严格隔离的目的
+ * @param appContent = `<div id="__qiankun_microapp_wrapper_for_${appInstanceId}__" data-name="${appName}">${template}</div>`
+ * @param strictStyleIsolation 是否开启严格样式隔离
+ */
 function createElement(
   appContent: string,
   strictStyleIsolation: boolean,
   scopedCSS: boolean,
   appInstanceId: string,
 ): HTMLElement {
-  // 使用 div 包装 appContent
+  // 创建一个 div 元素
   const containerElement = document.createElement('div');
   containerElement.innerHTML = appContent;
   const appElement = containerElement.firstChild as HTMLElement;
 
-  // 样式沙箱
+  // 如果开启了严格的样式隔离，则将 appContent 的子元素（微应用的入口模版）用 shadow dom 包裹，以达到微应用之间样式严格隔离的目的
   if (strictStyleIsolation) {
     if (!supportShadowDOM) {
       console.warn(
@@ -249,7 +255,20 @@ let prevAppUnmountedDeferred: Deferred<void>;
 
 export type ParcelConfigObjectGetter = (remountContainer?: string | HTMLElement) => ParcelConfigObject;
 
-// 加载微应用
+/**
+ * 完成了以下几件事：
+ *  1、通过 HTML Entry 的方式远程加载微应用，得到微应用的 html 模版（首屏内容）、JS 脚本执行器、静态经资源路径
+ *  2、样式隔离，shadow DOM 或者 scoped css 两种方式
+ *  3、渲染微应用
+ *  4、运行时沙箱，JS 沙箱、样式沙箱
+ *  5、合并沙箱传递出来的 生命周期方法、用户传递的生命周期方法、框架内置的生命周期方法，将这些生命周期方法统一整理，导出一个生命周期对象，
+ *     供 single-spa 的 registerApplication 方法使用，这个对象就相当于使用 single-spa 时你的微应用导出的那些生命周期方法，只不过 qiankun
+ *     额外填了一些生命周期方法，做了一些事情
+ *  6、给微应用注册通信方法并返回通信方法，然后会将通信方法通过 props 注入到微应用
+ * @param app 微应用配置对象
+ * @param configuration start 方法执行时设置的配置对象
+ * @param lifeCycles 注册微应用时提供的全局生命周期对象
+ */
 export async function loadApp<T extends ObjectType>(
   app: LoadableApp<T>,
   configuration: FrameworkConfiguration = {},
@@ -273,23 +292,26 @@ export async function loadApp<T extends ObjectType>(
     ...importEntryOpts
   } = configuration;
 
-  // 依赖 import-html-entry 第三方库
-  // 1、将 html 做为入口文件
-  // 2、importHTML(url, opts = {})
-  // 3、返回 template、execScripts
+  /**
+   * 依赖 import-html-entry 第三方库，获取微应用的入口 html 内容和脚本执行器
+   *  1、template 是 link 替换为 style 后的 template
+   *  2、execScript 是 让 JS 代码(scripts)在指定 上下文 中运行
+   *  3、assetPublicPath 是静态资源地址
+   */
   const { template, execScripts, assetPublicPath, getExternalScripts } = await importEntry(entry, importEntryOpts);
 
   // 触发外部脚本加载，以确保在execScripts调用之前所有资产都准备好了
   await getExternalScripts();
 
-  // 作为单spa加载和引导新应用程序与其他应用程序卸载并行
-  // 我们需要等待加载应用程序，直到所有应用程序都在单一模式下完成卸载
+  // single-spa 的限制，加载、初始化和卸载不能同时进行，
+  // 必须等卸载完成以后才可以进行加载，这个 promise 会在微应用卸载完成后被 resolve，在后面可以看到
   if (await validateSingularMode(singular, app)) {
     await (prevAppUnmountedDeferred && prevAppUnmountedDeferred.promise);
   }
 
-  // 制作 template 沙箱
+  // 制作沙箱
   const appContent = getDefaultTplWrapper(appInstanceId, sandbox)(template);
+  // 是否严格样式隔离
   const strictStyleIsolation = typeof sandbox === 'object' && !!sandbox.strictStyleIsolation;
 
   if (process.env.NODE_ENV === 'development' && strictStyleIsolation) {

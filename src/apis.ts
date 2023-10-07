@@ -117,7 +117,12 @@ export function registerMicroApps<T extends ObjectType>(
 const appConfigPromiseGetterMap = new Map<string, Promise<ParcelConfigObjectGetter>>();
 const containerMicroAppsMap = new Map<string, MicroApp[]>();
 
-// 手动注册、卸载微应用
+/**
+ * 手动加载一个微应用，是通过 single-spa 的 mountRootParcel api 实现的，返回微应用实例
+ * @param app = { name, entry, container, props }
+ * @param configuration 配置对象
+ * @param lifeCycles 还支持一个全局生命周期配置对象，这个参数官方文档没提到
+ */
 export function loadMicroApp<T extends ObjectType>(
   app: LoadableApp<T>,
   configuration?: FrameworkConfiguration & { autoStart?: boolean },
@@ -239,9 +244,8 @@ export function start(opts: FrameworkConfiguration = {}) {
   // 从这里可以看出 start 方法支持的参数不止官网文档说的那些，比如 urlRerouteOnly，这个是 single-spa 的 start 方法支持的
   const { prefetch, urlRerouteOnly = defaultUrlRerouteOnly, ...importEntryOpts } = frameworkConfiguration;
 
-  // 预加载
   if (prefetch) {
-    // 执行预加载策略，参数分别为微应用列表、预加载策略、{ fetch、getPublicPath、getTemplate }
+    // 执行预加载策略
     doPrefetchStrategy(microApps, prefetch, importEntryOpts);
   }
 
