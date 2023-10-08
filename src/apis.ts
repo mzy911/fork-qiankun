@@ -21,7 +21,7 @@ export let frameworkConfiguration: FrameworkConfiguration = {};
 let started = false;
 const defaultUrlRerouteOnly = true;
 
-// 返回一个 Promise 类
+// 返回一个Promise"对象"
 const frameworkStartedDefer = new Deferred<void>();
 
 // 自动降级低版本浏览器
@@ -171,9 +171,7 @@ export function loadMicroApp<T extends ObjectType>(
   };
 
   /**
-   * using name + container xpath as the micro app instance id,
-   * it means if you rendering a micro app to a dom which have been rendered before,
-   * the micro app would not load and evaluate its lifecycles again
+   * 将名称容器xpath作为微应用实例id，这意味着如果你将一个微应用渲染到一个之前已经渲染过的dom，这个微应用将不会再次加载生命周期
    */
   const memorizedLoadingFn = async (): Promise<ParcelConfigObject> => {
     const userConfiguration = autoDowngradeForLowVersionBrowser(
@@ -206,8 +204,7 @@ export function loadMicroApp<T extends ObjectType>(
   };
 
   if (!started && configuration?.autoStart !== false) {
-    // We need to invoke start method of single-spa as the popstate event should be dispatched while the main app calling pushState/replaceState automatically,
-    // but in single-spa it will check the start status before it dispatch popstate
+    // 我们需要调用single-spa的start方法，因为popstate事件应该在主应用自动调用pushState/replaceState时被分派，但在single-spa中，它会在分派popstate之前检查启动状态
     // see https://github.com/single-spa/single-spa/blob/f28b5963be1484583a072c8145ac0b5a28d91235/src/navigation/navigation-events.js#L101
     // ref https://github.com/umijs/qiankun/pull/1071
     startSingleSpa({ urlRerouteOnly: frameworkConfiguration.urlRerouteOnly ?? defaultUrlRerouteOnly });

@@ -9,7 +9,7 @@ import type { OnGlobalStateChangeCallback, MicroAppStateActions } from './interf
 let globalState: Record<string, any> = {};
 const deps: Record<string, OnGlobalStateChangeCallback> = {};
 
-// 触发全局监听，执行所有应用注册的回调函数
+// 执行所有应用注册的回调函数
 function emitGlobal(state: Record<string, any>, prevState: Record<string, any>) {
   Object.keys(deps).forEach((id: string) => {
     if (deps[id] instanceof Function) {
@@ -30,7 +30,7 @@ export function initGlobalState(state: Record<string, any> = {}) {
   if (state === globalState) {
     console.warn('[qiankun] state has not changed！');
   } else {
-    // 方法有可能被重复调用，将已有的全局状态克隆一份，为空则是第一次调用 initGlobalState 方法，不为空则非第一次次调用
+    // 将已有的全局状态克隆一份
     const prevGlobalState = cloneDeep(globalState);
     // 将传递的状态克隆一份赋值为 globalState
     globalState = cloneDeep(state);
@@ -42,28 +42,15 @@ export function initGlobalState(state: Record<string, any> = {}) {
 }
 
 /**
- * 返回通信方法
+ * 返回通信方法（监听、设置、注销）
  * @param id 应用 id
  * @param isMaster 表明调用的应用是否为主应用，在主应用初始化全局状态时，initGlobalState 内部调用该方法时会传递 true，其它都为 false
  */
 export function getMicroAppStateActions(id: string, isMaster?: boolean): MicroAppStateActions {
   return {
     /**
-     * onGlobalStateChange 全局依赖监听
-     *
-     * 收集 setState 时所需要触发的依赖
-     *
-     * 限制条件：每个子应用只有一个激活状态的全局监听，新监听覆盖旧监听，若只是监听部分属性，请使用 onGlobalStateChange
-     *
-     * 这么设计是为了减少全局监听滥用导致的内存爆炸
-     *
-     * 依赖数据结构为：
-     * {
-     *   {id}: callback
-     * }
-     *
-     * @param callback
-     * @param fireImmediately
+     * 监听全局状态、有变化时触发次函数
+     * @param state 新的全局状态
      */
     onGlobalStateChange(callback: OnGlobalStateChangeCallback, fireImmediately?: boolean) {
       // 回调函数必须为 function
@@ -77,7 +64,7 @@ export function getMicroAppStateActions(id: string, isMaster?: boolean): MicroAp
       }
       // id 为一个应用 id，一个应用对应一个回调
       deps[id] = callback;
-      // 如果需要，立即出发回调执行
+      // 立即出发回调执行
       if (fireImmediately) {
         const cloneState = cloneDeep(globalState);
         callback(cloneState, cloneState);
@@ -85,7 +72,7 @@ export function getMicroAppStateActions(id: string, isMaster?: boolean): MicroAp
     },
 
     /**
-     * setGlobalState 更新 store 数据
+     * setGlobalState：按一级属性设置全局状态
      *
      * 1. 对新输入 state 的第一层属性做校验，如果是主应用则可以添加新的一级属性进来，也可以更新已存在的一级属性，
      *    如果是微应用，则只能更新已存在的一级属性，不可以新增一级属性
@@ -103,11 +90,15 @@ export function getMicroAppStateActions(id: string, isMaster?: boolean): MicroAp
       const changeKeys: string[] = [];
       // 旧的全局状态
       const prevGlobalState = cloneDeep(globalState);
+
       globalState = cloneDeep(
         // 循环遍历新状态中的所有 key
         Object.keys(state).reduce((_globalState, changeKey) => {
+          // 主应用 或者 旧的全局状态存在该 key 时才进来
+          // 1、说明只有主应用才可以新增属性
+          // 2、微应用只可以更新已存在的属性值
+          // 3、且不论主应用微应用只能更新一级属性
           if (isMaster || _globalState.hasOwnProperty(changeKey)) {
-            // 主应用 或者 旧的全局状态存在该 key 时才进来，说明只有主应用才可以新增属性，微应用只可以更新已存在的属性值，且不论主应用微应用只能更新一级属性
             // 记录被改变的key
             changeKeys.push(changeKey);
             // 更新旧状态中对应的 key value
@@ -117,10 +108,12 @@ export function getMicroAppStateActions(id: string, isMaster?: boolean): MicroAp
           return _globalState;
         }, globalState),
       );
+
       if (changeKeys.length === 0) {
         console.warn('[qiankun] state has not changed！');
         return false;
       }
+
       // 触发全局监听
       emitGlobal(globalState, prevGlobalState);
       return true;

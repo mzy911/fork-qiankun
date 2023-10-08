@@ -33,6 +33,7 @@ import {
   validateExportLifecycle,
 } from './utils';
 
+// 元素是否存在
 function assertElementExist(element: Element | null | undefined, msg?: string) {
   if (!element) {
     if (msg) {
@@ -43,7 +44,7 @@ function assertElementExist(element: Element | null | undefined, msg?: string) {
   }
 }
 
-// 执行回调函数
+// 执行回调函数链
 function execHooksChain<T extends ObjectType>(
   hooks: Array<LifeCycleFn<T>>,
   app: LoadableApp<T>,
@@ -56,6 +57,7 @@ function execHooksChain<T extends ObjectType>(
   return Promise.resolve();
 }
 
+// 验证是否微单一模式
 async function validateSingularMode<T extends ObjectType>(
   validate: FrameworkConfiguration['singular'],
   app: LoadableApp<T>,
@@ -66,7 +68,7 @@ async function validateSingularMode<T extends ObjectType>(
 const supportShadowDOM = !!document.head.attachShadow || !!(document.head as any).createShadowRoot;
 
 /**
- * 做了两件事
+ * 创建 Element
  *  1、将 appContent 由字符串模版转换成 html dom 元素
  *  2、如果需要开启严格样式隔离，则将 appContent 的子元素即微应用的入口模版用 shadow dom 包裹起来，达到样式严格隔离的目的
  * @param appContent = `<div id="__qiankun_microapp_wrapper_for_${appInstanceId}__" data-name="${appName}">${template}</div>`
@@ -126,7 +128,9 @@ function createElement(
   return appElement;
 }
 
-/** 生成应用包装器dom getter */
+/**
+ * 生成应用包装器dom getter
+ * */
 function getAppWrapperGetter(
   appInstanceId: string,
   useLegacyRender: boolean,
@@ -175,13 +179,14 @@ function getRender(appInstanceId: string, appContent: string, legacyRender?: HTM
         );
       }
 
+      // 使用 legacyRender 渲染 element
       return legacyRender({ loading, appContent: element ? appContent : '' });
     }
 
     const containerElement = getContainer(container!);
 
-    // The container might have be removed after micro app unmounted.
-    // Such as the micro app unmount lifecycle called by a react componentWillUnmount lifecycle, after micro app unmounted, the react component might also be removed
+    // 容器可能在微应用卸载后被移除。
+    // 比如由react componentWillUnmount生命周期调用的微应用卸载生命周期，在微应用卸载后，react组件也可能被移除
     if (phase !== 'unmounted') {
       const errorMsg = (() => {
         switch (phase) {
@@ -205,7 +210,7 @@ function getRender(appInstanceId: string, appContent: string, legacyRender?: HTM
         rawRemoveChild.call(containerElement, containerElement!.firstChild);
       }
 
-      // append the element to container if it exist
+      // 如果该元素存在，将其附加到容器中
       if (element) {
         rawAppendChild.call(containerElement, element);
       }
@@ -217,17 +222,19 @@ function getRender(appInstanceId: string, appContent: string, legacyRender?: HTM
   return render;
 }
 
+// 获取生命周期的钩子函数
 function getLifecyclesFromExports(
   scriptExports: LifeCycles<any>,
   appName: string,
   global: WindowProxy,
   globalLatestSetProp?: PropertyKey | null,
 ) {
+  // 返回生命周期钩子函数
   if (validateExportLifecycle(scriptExports)) {
     return scriptExports;
   }
 
-  // fallback to sandbox latest set property if it had
+  // 回退到沙盒最新设置属性(如果有)
   if (globalLatestSetProp) {
     const lifecycles = (<any>global)[globalLatestSetProp];
     if (validateExportLifecycle(lifecycles)) {
@@ -241,7 +248,7 @@ function getLifecyclesFromExports(
     );
   }
 
-  // fallback to global variable who named with ${appName} while module exports not found
+  // 当模块导出未找到时，回退到以${appName}命名的全局变量
   const globalVariableExports = (global as any)[appName];
 
   if (validateExportLifecycle(globalVariableExports)) {
@@ -256,7 +263,7 @@ let prevAppUnmountedDeferred: Deferred<void>;
 export type ParcelConfigObjectGetter = (remountContainer?: string | HTMLElement) => ParcelConfigObject;
 
 /**
- * 完成了以下几件事：
+ * 加载当前微应用 - 完成了以下几件事：
  *  1、通过 HTML Entry 的方式远程加载微应用，得到微应用的 html 模版（首屏内容）、JS 脚本执行器、静态经资源路径
  *  2、样式隔离，shadow DOM 或者 scoped css 两种方式
  *  3、渲染微应用
@@ -394,12 +401,14 @@ export async function loadApp<T extends ObjectType>(
     sandboxContainer?.instance?.latestSetProp,
   );
 
+  // 监听、设置 全局State
   const { onGlobalStateChange, setGlobalState, offGlobalStateChange }: Record<string, CallableFunction> =
     getMicroAppStateActions(appInstanceId);
 
   // FIXME temporary way
   const syncAppWrapperElement2Sandbox = (element: HTMLElement | null) => (initialAppWrapperElement = element);
 
+  // 返回 parcelConfigGetter
   const parcelConfigGetter: ParcelConfigObjectGetter = (remountContainer = initialContainer) => {
     let appWrapperElement: HTMLElement | null;
     let appWrapperGetter: ReturnType<typeof getAppWrapperGetter>;

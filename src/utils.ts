@@ -40,7 +40,6 @@ export function nextTask(cb: () => void): void {
 }
 
 const fnRegexCheckCacheMap = new WeakMap<any | FunctionConstructor, boolean>();
-
 export function isConstructable(fn: () => any | FunctionConstructor) {
   // prototype methods might be changed while code running, so we need check it every time
   const hasPrototypeMethods =
@@ -76,12 +75,6 @@ export function isCallable(fn: any): boolean {
   if (callableFnCacheMap.has(fn)) {
     return true;
   }
-
-  /**
-   * We can not use typeof to confirm it is function as in some safari version
-   * typeof document.all === 'undefined' // true
-   * typeof document.all === 'function' // true
-   */
   const callable = typeof fn === 'function' && fn instanceof Function;
   if (callable) {
     callableFnCacheMap.set(fn, callable);
@@ -115,15 +108,10 @@ export function isPropertyFrozen(target: any, p?: PropertyKey): boolean {
 }
 
 const boundedMap = new WeakMap<CallableFunction, boolean>();
-
 export function isBoundedFunction(fn: CallableFunction) {
   if (boundedMap.has(fn)) {
     return boundedMap.get(fn);
   }
-  /*
-   indexOf is faster than startsWith
-   see https://jsperf.com/string-startswith/72
-   */
   const bounded = fn.name.indexOf('bound ') === 0 && !fn.hasOwnProperty('prototype');
   boundedMap.set(fn, bounded);
   return bounded;
@@ -140,7 +128,7 @@ export const isConstDestructAssignmentSupported = memoize(() => {
 
 export const qiankunHeadTagName = 'qiankun-head';
 
-// 制作沙箱
+// 制作沙箱 Wrapper
 export function getDefaultTplWrapper(name: string, sandboxOpts: FrameworkConfiguration['sandbox']) {
   return (tpl: string) => {
     let tplWithSimulatedHead: string;
@@ -207,6 +195,7 @@ export function validateExportLifecycle(exports: any) {
   return isFunction(bootstrap) && isFunction(mount) && isFunction(unmount);
 }
 
+// 创建Promise对象
 export class Deferred<T> {
   promise: Promise<T>;
 
@@ -249,7 +238,6 @@ export function performanceMark(markName: string) {
     performance.mark(markName);
   }
 }
-
 export function performanceMeasure(measureName: string, markName: string) {
   if (supportsUserTiming && performance.getEntriesByName(markName, 'mark').length) {
     performance.measure(measureName, markName);
@@ -258,6 +246,7 @@ export function performanceMeasure(measureName: string, markName: string) {
   }
 }
 
+// 是否启动CSS沙箱
 export function isEnableScopedCSS(sandbox: FrameworkConfiguration['sandbox']) {
   if (typeof sandbox !== 'object') {
     return false;
@@ -271,12 +260,11 @@ export function isEnableScopedCSS(sandbox: FrameworkConfiguration['sandbox']) {
 }
 
 /**
- * copy from https://developer.mozilla.org/zh-CN/docs/Using_XPath
+ * 计算XPath https://developer.mozilla.org/zh-CN/docs/Using_XPath
  * @param el
  * @param document
  */
 export function getXPathForElement(el: Node, document: Document): string | void {
-  // not support that if el not existed in document yet(such as it not append to document before it mounted)
   if (!document.body.contains(el)) {
     return undefined;
   }
@@ -305,13 +293,15 @@ export function getXPathForElement(el: Node, document: Document): string | void 
   xpath = `/*[name()='${document.documentElement.nodeName}']/${xpath}`;
   xpath = xpath.replace(/\/$/, '');
 
+  console.log('xpathxpathxpathxpathxpath', xpath);
+
   return xpath;
 }
-
 export function getContainer(container: string | HTMLElement): HTMLElement | null {
   return typeof container === 'string' ? document.querySelector(container) : container;
 }
 
+// 返回 XPath
 export function getContainerXPath(container?: string | HTMLElement): string | void {
   if (container) {
     const containerElement = getContainer(container);
