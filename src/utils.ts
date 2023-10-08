@@ -155,13 +155,11 @@ export function getDefaultTplWrapper(name: string, sandboxOpts: FrameworkConfigu
       tplWithSimulatedHead = `<${qiankunHeadTagName}></${qiankunHeadTagName}>${tpl}`;
     }
 
-    return `<div
-      id="${getWrapperId(name)}"
-      data-name="${name}"
-      data-version="${version}"
-      data-sandbox-cfg=${JSON.stringify(sandboxOpts)}>
-      ${tplWithSimulatedHead}
-    </div>`;
+    return `<div id="${getWrapperId(
+      name,
+    )}" data-name="${name}" data-version="${version}" data-sandbox-cfg=${JSON.stringify(
+      sandboxOpts,
+    )}>${tplWithSimulatedHead}</div>`;
   };
 }
 
