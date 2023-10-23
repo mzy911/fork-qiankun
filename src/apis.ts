@@ -118,7 +118,7 @@ const appConfigPromiseGetterMap = new Map<string, Promise<ParcelConfigObjectGett
 const containerMicroAppsMap = new Map<string, MicroApp[]>();
 
 /**
- * 手动加载一个微应用，是通过 single-spa 的 mountRootParcel api 实现的，返回微应用实例
+ * 手动加载一个微应用
  * @param app = { name, entry, container, props }
  * @param configuration 配置对象
  * @param lifeCycles 还支持一个全局生命周期配置对象，这个参数官方文档没提到
@@ -137,6 +137,8 @@ export function loadMicroApp<T extends ObjectType>(
   const appContainerXPathKey = `${name}-${containerXPath}`;
 
   let microApp: MicroApp;
+
+  // 包裹配置为重新挂载
   const wrapParcelConfigForRemount = (config: ParcelConfigObject): ParcelConfigObject => {
     let microAppConfig = config;
     if (container) {
@@ -180,7 +182,7 @@ export function loadMicroApp<T extends ObjectType>(
     const { $$cacheLifecycleByAppName } = userConfiguration;
 
     if (container) {
-      // using appName as cache for internal experimental scenario
+      // 使用 appName 作为内部实验场景的缓存
       if ($$cacheLifecycleByAppName) {
         const parcelConfigGetterPromise = appConfigPromiseGetterMap.get(name);
         if (parcelConfigGetterPromise) return wrapParcelConfigForRemount((await parcelConfigGetterPromise)(container));
@@ -192,6 +194,7 @@ export function loadMicroApp<T extends ObjectType>(
       }
     }
 
+    // 加载手动注册的应用
     const parcelConfigObjectGetterPromise = loadApp(app, userConfiguration, lifeCycles);
 
     if (container) {
@@ -204,17 +207,15 @@ export function loadMicroApp<T extends ObjectType>(
   };
 
   if (!started && configuration?.autoStart !== false) {
-    // 我们需要调用single-spa的start方法，因为popstate事件应该在主应用自动调用pushState/replaceState时被分派，但在single-spa中，它会在分派popstate之前检查启动状态
-    // see https://github.com/single-spa/single-spa/blob/f28b5963be1484583a072c8145ac0b5a28d91235/src/navigation/navigation-events.js#L101
-    // ref https://github.com/umijs/qiankun/pull/1071
     startSingleSpa({ urlRerouteOnly: frameworkConfiguration.urlRerouteOnly ?? defaultUrlRerouteOnly });
   }
 
+  // 挂载一个 Parcel 应用
   microApp = mountRootParcel(memorizedLoadingFn, { domElement: document.createElement('div'), ...props });
 
   if (container) {
     if (containerXPath) {
-      // Store the microApps which they mounted on the same container
+      // 将他们安装在同一个容器上的微应用程序存储在一起
       const microAppsRef = containerMicroAppsMap.get(appContainerXPathKey) || [];
       microAppsRef.push(microApp);
       containerMicroAppsMap.set(appContainerXPathKey, microAppsRef);
