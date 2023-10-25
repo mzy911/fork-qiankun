@@ -68,11 +68,12 @@ async function validateSingularMode<T extends ObjectType>(
 const supportShadowDOM = !!document.head.attachShadow || !!(document.head as any).createShadowRoot;
 
 /**
- * 创建 Element
+ * 创建 Element、利用 attachShadow 样式隔离
  *  1、将 appContent 由字符串模版转换成 html dom 元素
  *  2、如果需要开启严格样式隔离，则将 appContent 的子元素即微应用的入口模版用 shadow dom 包裹起来，达到样式严格隔离的目的
  * @param appContent = `<div id="__qiankun_microapp_wrapper_for_${appInstanceId}__" data-name="${appName}">${template}</div>`
  * @param strictStyleIsolation 是否开启严格样式隔离
+ * @param scopedCSS 实验性的样式隔离，如果开启了严格样式隔离，则 scoped css 就为 false
  */
 function createElement(
   appContent: string,
@@ -85,8 +86,9 @@ function createElement(
   containerElement.innerHTML = appContent;
   const appElement = containerElement.firstChild as HTMLElement;
 
-  // 如果开启了严格的样式隔离，则将 appContent 的子元素（微应用的入口模版）用 shadow dom 包裹，以达到微应用之间样式严格隔离的目的
+  // 如果开启了严格的样式隔离（以达到微应用之间样式严格隔离的目的）
   if (strictStyleIsolation) {
+    // 利用 ShadowDOM 隔离外部环境用于封装组件
     if (!supportShadowDOM) {
       console.warn(
         '[qiankun]: As current browser not support shadow dom, your strictStyleIsolation configuration will be ignored!',
@@ -128,9 +130,7 @@ function createElement(
   return appElement;
 }
 
-/**
- * 生成应用包装器dom getter
- * */
+// 获取 App 外层容器
 function getAppWrapperGetter(
   appInstanceId: string,
   useLegacyRender: boolean,
@@ -145,6 +145,7 @@ function getAppWrapperGetter(
 
       const appWrapper = document.getElementById(getWrapperId(appInstanceId));
       assertElementExist(appWrapper, `Wrapper element for ${appInstanceId} is not existed!`);
+      // "!" 非空断言
       return appWrapper!;
     }
 
@@ -167,11 +168,13 @@ type ElementRender = (
 ) => any;
 
 /**
- * 获取渲染函数
- * 如果提供了遗留渲染函数，就按原样使用，否则我们将通过乾坤将app元素插入目标容器
+ * 获取渲染函数、插入元素
+ * 1、如果提供了遗留渲染函数，就按原样使用
+ * 2、否则我们将通过乾坤将app元素插入目标容器
  */
 function getRender(appInstanceId: string, appContent: string, legacyRender?: HTMLContentRender) {
   const render: ElementRender = ({ element, loading, container }, phase) => {
+    // 存在 legacyRender 遗留渲染函数
     if (legacyRender) {
       if (process.env.NODE_ENV === 'development') {
         console.error(
