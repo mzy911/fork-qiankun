@@ -17,10 +17,7 @@ export function sleep(ms: number) {
 
 // Promise.then might be synchronized in Zone.js context, we need to use setTimeout instead to mock next tick.
 // Since zone.js will hijack the setTimeout callback, and notify angular to do change detection, so we need to use the  __zone_symbol__setTimeout to avoid this, see https://github.com/umijs/qiankun/issues/2384
-const nextTick: (cb: () => void) => void =
-  typeof window.__zone_symbol__setTimeout === 'function'
-    ? window.__zone_symbol__setTimeout
-    : (cb) => Promise.resolve().then(cb);
+const nextTick: (cb: () => void) => void = typeof window.__zone_symbol__setTimeout === 'function' ? window.__zone_symbol__setTimeout : (cb) => Promise.resolve().then(cb);
 
 let globalTaskPending = false;
 
@@ -42,8 +39,7 @@ export function nextTask(cb: () => void): void {
 const fnRegexCheckCacheMap = new WeakMap<any | FunctionConstructor, boolean>();
 export function isConstructable(fn: () => any | FunctionConstructor) {
   // prototype methods might be changed while code running, so we need check it every time
-  const hasPrototypeMethods =
-    fn.prototype && fn.prototype.constructor === fn && Object.getOwnPropertyNames(fn.prototype).length > 1;
+  const hasPrototypeMethods = fn.prototype && fn.prototype.constructor === fn && Object.getOwnPropertyNames(fn.prototype).length > 1;
 
   if (hasPrototypeMethods) return true;
 
@@ -96,9 +92,7 @@ export function isPropertyFrozen(target: any, p?: PropertyKey): boolean {
 
   const propertyDescriptor = Object.getOwnPropertyDescriptor(target, p);
   const frozen = Boolean(
-    propertyDescriptor &&
-      propertyDescriptor.configurable === false &&
-      (propertyDescriptor.writable === false || (propertyDescriptor.get && !propertyDescriptor.set)),
+    propertyDescriptor && propertyDescriptor.configurable === false && (propertyDescriptor.writable === false || (propertyDescriptor.get && !propertyDescriptor.set)),
   );
 
   targetPropertiesFromCache[p] = frozen;
@@ -128,26 +122,20 @@ export const isConstDestructAssignmentSupported = memoize(() => {
 
 export const qiankunHeadTagName = 'qiankun-head';
 
-// 制作沙箱 Wrapper
+// 制作沙箱 Wrapper 并设置 id
 export function getDefaultTplWrapper(name: string, sandboxOpts: FrameworkConfiguration['sandbox']) {
   return (tpl: string) => {
     let tplWithSimulatedHead: string;
 
     if (tpl.indexOf('<head>') !== -1) {
       // 我们需要模拟一个头部占位符，因为在微应用中，原生头部元素会被浏览器删除
-      tplWithSimulatedHead = tpl
-        .replace('<head>', `<${qiankunHeadTagName}>`)
-        .replace('</head>', `</${qiankunHeadTagName}>`);
+      tplWithSimulatedHead = tpl.replace('<head>', `<${qiankunHeadTagName}>`).replace('</head>', `</${qiankunHeadTagName}>`);
     } else {
       // 有些模板可能不是标准的html文档，因此我们需要为它们添加模拟的头部标记
       tplWithSimulatedHead = `<${qiankunHeadTagName}></${qiankunHeadTagName}>${tpl}`;
     }
 
-    return `<div id="${getWrapperId(
-      name,
-    )}" data-name="${name}" data-version="${version}" data-sandbox-cfg=${JSON.stringify(
-      sandboxOpts,
-    )}>${tplWithSimulatedHead}</div>`;
+    return `<div id="${getWrapperId(name)}" data-name="${name}" data-version="${version}" data-sandbox-cfg=${JSON.stringify(sandboxOpts)}>${tplWithSimulatedHead}</div>`;
   };
 }
 
@@ -252,6 +240,7 @@ export function isEnableScopedCSS(sandbox: FrameworkConfiguration['sandbox']) {
     return false;
   }
 
+  // 开通样式模式的样式隔离、scopedCSS 返回 false
   if (sandbox.strictStyleIsolation) {
     return false;
   }

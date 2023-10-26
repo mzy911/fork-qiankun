@@ -31,29 +31,23 @@ export function createSandboxContainer(
   appName: string,
   elementGetter: () => HTMLElement | ShadowRoot,
   scopedCSS: boolean,
-  useLooseSandbox?: boolean,
+  useLooseSandbox?: boolean, // 使用松散沙箱
   excludeAssetFilter?: (url: string) => boolean,
   globalContext?: typeof window,
   speedySandBox?: boolean,
 ) {
+  // 一共三种沙箱
+  // 1、LegacySandbox、ProxySandbox 依赖 window.Proxy
+  // 2、SnapshotSandbox 用于单列模式
   let sandbox: SandBox;
   if (window.Proxy) {
-    sandbox = useLooseSandbox
-      ? new LegacySandbox(appName, globalContext)
-      : new ProxySandbox(appName, globalContext, { speedy: !!speedySandBox });
+    sandbox = useLooseSandbox ? new LegacySandbox(appName, globalContext) : new ProxySandbox(appName, globalContext, { speedy: !!speedySandBox });
   } else {
     sandbox = new SnapshotSandbox(appName);
   }
 
   // 在引导过程中可能会调用一些副作用，例如使用样式加载器进行动态样式表注入，特别是在开发阶段
-  const bootstrappingFreers = patchAtBootstrapping(
-    appName,
-    elementGetter,
-    sandbox,
-    scopedCSS,
-    excludeAssetFilter,
-    speedySandBox,
-  );
+  const bootstrappingFreers = patchAtBootstrapping(appName, elementGetter, sandbox, scopedCSS, excludeAssetFilter, speedySandBox);
   // 挂载自由器是一次性的，应该在每次挂载时重新初始化
   let mountingFreers: Freer[] = [];
   let sideEffectsRebuilders: Rebuilder[] = [];

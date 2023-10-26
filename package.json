@@ -70,9 +70,6 @@
   "lint-staged": {
     "**/*.{js,ts,json,css,md}": [
       "prettier -w"
-    ],
-    "**/*.{js,ts}": [
-      "yarn lint:fix"
     ]
   },
   "jest": {

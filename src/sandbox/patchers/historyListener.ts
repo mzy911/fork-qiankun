@@ -5,9 +5,9 @@
 
 import { isFunction, noop } from 'lodash';
 
+// g_history umi中的全局变量
+// 修复 umi 中卸载时的问题
 export default function patch() {
-  // FIXME umi unmount feature request
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let rawHistoryListen = (_: any) => noop;
   const historyListeners: Array<typeof noop> = [];
   const historyUnListens: Array<typeof noop> = [];
@@ -32,15 +32,11 @@ export default function patch() {
   return function free() {
     let rebuild = noop;
 
-    /*
-     还存在余量 listener 表明未被卸载，存在两种情况
-     1. 应用在 unmout 时未正确卸载 listener
-     2. listener 是应用 mount 之前绑定的，
-     第二种情况下应用在下次 mount 之前需重新绑定该 listener
-     */
+    // 执行余量 listener
+    // 1、应用在 unmout 时未正确卸载 listener
+    // 2、listener 是应用 mount 之前绑定的，在下次 mount 之前需重新绑定该 listener
     if (historyListeners.length) {
       rebuild = () => {
-        // 必须使用 window.g_history.listen 的方式重新绑定 listener，从而能保证 rebuild 这部分也能被捕获到，否则在应用卸载后无法正确的移除这部分副作用
         historyListeners.forEach((listener) => (window as any).g_history.listen(listener));
       };
     }

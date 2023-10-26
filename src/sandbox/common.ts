@@ -6,20 +6,21 @@
 import { isBoundedFunction, isCallable, isConstructable } from '../utils';
 
 type AppInstance = { name: string; window: WindowProxy };
+
+// 正在运行的沙箱
 let currentRunningApp: AppInstance | null = null;
 
-/**
- * get the app that running tasks at current tick
- */
+// 获取 currentRunningApp
 export function getCurrentRunningApp() {
   return currentRunningApp;
 }
 
+// 设置 currentRunningApp
 export function setCurrentRunningApp(appInstance: { name: string; window: WindowProxy }) {
-  // Set currentRunningApp and it's proxySandbox to global window, as its only use case is for document.createElement from now on, which hijacked by a global way
   currentRunningApp = appInstance;
 }
 
+// 置空 currentRunningApp
 export function clearCurrentRunningApp() {
   currentRunningApp = null;
 }
@@ -65,10 +66,7 @@ export function getTargetValue(target: any, value: any): any {
       const boundValueHasPrototypeToString = boundValue.toString === Function.prototype.toString;
 
       if (valueHasInstanceToString || boundValueHasPrototypeToString) {
-        const originToStringDescriptor = Object.getOwnPropertyDescriptor(
-          valueHasInstanceToString ? value : Function.prototype,
-          'toString',
-        );
+        const originToStringDescriptor = Object.getOwnPropertyDescriptor(valueHasInstanceToString ? value : Function.prototype, 'toString');
 
         Object.defineProperty(boundValue, 'toString', {
           ...originToStringDescriptor,

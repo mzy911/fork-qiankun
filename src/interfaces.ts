@@ -55,11 +55,7 @@ export type RegistrableApp<T extends ObjectType> = LoadableApp<T> & {
   activeRule: RegisterApplicationConfig['activeWhen'];
 };
 
-export type PrefetchStrategy =
-  | boolean
-  | 'all'
-  | string[]
-  | ((apps: AppMetadata[]) => { criticalAppNames: string[]; minorAppsName: string[] });
+export type PrefetchStrategy = boolean | 'all' | string[] | ((apps: AppMetadata[]) => { criticalAppNames: string[]; minorAppsName: string[] });
 
 type QiankunSpecialOpts = {
   /**
@@ -111,31 +107,23 @@ export type Rebuilder = () => void;
 export type Freer = () => Rebuilder;
 export type Patcher = () => Freer;
 
+// 三种沙箱类型
 export enum SandBoxType {
   Proxy = 'Proxy',
   Snapshot = 'Snapshot',
-
-  // for legacy sandbox
-  // https://github.com/umijs/qiankun/blob/0d1d3f0c5ed1642f01854f96c3fabf0a2148bd26/src/sandbox/legacy/sandbox.ts#L22...L25
   LegacyProxy = 'LegacyProxy',
 }
 
+// 沙箱通用属性
 export type SandBox = {
-  /** 沙箱的名字 */
-  name: string;
-  /** 沙箱的类型 */
-  type: SandBoxType;
-  /** 沙箱导出的代理实体 */
-  proxy: WindowProxy;
-  /** 沙箱是否在运行中 */
-  sandboxRunning: boolean;
-  /** latest set property */
-  latestSetProp?: PropertyKey | null;
+  name: string; // 沙箱的名字
+  type: SandBoxType; // 沙箱的类型
+  proxy: WindowProxy; // 沙箱导出的代理实体
+  sandboxRunning: boolean; // 沙箱是否在运行中
+  latestSetProp?: PropertyKey | null; // latest set property
   patchDocument: (doc: Document) => void;
-  /** 启动沙箱 */
-  active: () => void;
-  /** 关闭沙箱 */
-  inactive: () => void;
+  active: () => void; // 启动沙箱
+  inactive: () => void; // 关闭沙箱
 };
 
 export type OnGlobalStateChangeCallback = (state: Record<string, any>, prevState: Record<string, any>) => void;

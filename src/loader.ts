@@ -9,14 +9,7 @@ import type { LifeCycles, ParcelConfigObject } from 'single-spa';
 import getAddOns from './addons';
 import { QiankunError } from './error';
 import { getMicroAppStateActions } from './globalState';
-import type {
-  FrameworkConfiguration,
-  FrameworkLifeCycles,
-  HTMLContentRender,
-  LifeCycleFn,
-  LoadableApp,
-  ObjectType,
-} from './interfaces';
+import type { FrameworkConfiguration, FrameworkLifeCycles, HTMLContentRender, LifeCycleFn, LoadableApp, ObjectType } from './interfaces';
 import { createSandboxContainer, css } from './sandbox';
 import { cachedGlobals } from './sandbox/proxySandbox';
 import {
@@ -45,11 +38,7 @@ function assertElementExist(element: Element | null | undefined, msg?: string) {
 }
 
 // 执行回调函数链
-function execHooksChain<T extends ObjectType>(
-  hooks: Array<LifeCycleFn<T>>,
-  app: LoadableApp<T>,
-  global = window,
-): Promise<any> {
+function execHooksChain<T extends ObjectType>(hooks: Array<LifeCycleFn<T>>, app: LoadableApp<T>, global = window): Promise<any> {
   if (hooks.length) {
     return hooks.reduce((chain, hook) => chain.then(() => hook(app, global)), Promise.resolve());
   }
@@ -58,29 +47,21 @@ function execHooksChain<T extends ObjectType>(
 }
 
 // 验证是否微单一模式
-async function validateSingularMode<T extends ObjectType>(
-  validate: FrameworkConfiguration['singular'],
-  app: LoadableApp<T>,
-): Promise<boolean> {
+async function validateSingularMode<T extends ObjectType>(validate: FrameworkConfiguration['singular'], app: LoadableApp<T>): Promise<boolean> {
   return typeof validate === 'function' ? validate(app) : !!validate;
 }
 
 const supportShadowDOM = !!document.head.attachShadow || !!(document.head as any).createShadowRoot;
 
 /**
- * 创建 Element、利用 attachShadow 样式隔离
+ * 创建 Element、a：利用 attachShadow 样式隔离 b：setAttribute(css.QiankunCSSRewriteAttr, appInstanceId)
  *  1、将 appContent 由字符串模版转换成 html dom 元素
  *  2、如果需要开启严格样式隔离，则将 appContent 的子元素即微应用的入口模版用 shadow dom 包裹起来，达到样式严格隔离的目的
  * @param appContent = `<div id="__qiankun_microapp_wrapper_for_${appInstanceId}__" data-name="${appName}">${template}</div>`
  * @param strictStyleIsolation 是否开启严格样式隔离
  * @param scopedCSS 实验性的样式隔离，如果开启了严格样式隔离，则 scoped css 就为 false
  */
-function createElement(
-  appContent: string,
-  strictStyleIsolation: boolean,
-  scopedCSS: boolean,
-  appInstanceId: string,
-): HTMLElement {
+function createElement(appContent: string, strictStyleIsolation: boolean, scopedCSS: boolean, appInstanceId: string): HTMLElement {
   // 创建一个 div 元素
   const containerElement = document.createElement('div');
   containerElement.innerHTML = appContent;
@@ -90,9 +71,7 @@ function createElement(
   if (strictStyleIsolation) {
     // 利用 ShadowDOM 隔离外部环境用于封装组件
     if (!supportShadowDOM) {
-      console.warn(
-        '[qiankun]: As current browser not support shadow dom, your strictStyleIsolation configuration will be ignored!',
-      );
+      console.warn('[qiankun]: As current browser not support shadow dom, your strictStyleIsolation configuration will be ignored!');
     } else {
       const { innerHTML } = appElement;
       appElement.innerHTML = '';
@@ -131,13 +110,7 @@ function createElement(
 }
 
 // 获取 App 外层容器
-function getAppWrapperGetter(
-  appInstanceId: string,
-  useLegacyRender: boolean,
-  strictStyleIsolation: boolean,
-  scopedCSS: boolean,
-  elementGetter: () => HTMLElement | null,
-) {
+function getAppWrapperGetter(appInstanceId: string, useLegacyRender: boolean, strictStyleIsolation: boolean, scopedCSS: boolean, elementGetter: () => HTMLElement | null) {
   return () => {
     if (useLegacyRender) {
       if (strictStyleIsolation) throw new QiankunError('strictStyleIsolation can not be used with legacy render!');
@@ -162,10 +135,7 @@ function getAppWrapperGetter(
 
 const rawAppendChild = HTMLElement.prototype.appendChild;
 const rawRemoveChild = HTMLElement.prototype.removeChild;
-type ElementRender = (
-  props: { element: HTMLElement | null; loading: boolean; container?: string | HTMLElement },
-  phase: 'loading' | 'mounting' | 'mounted' | 'unmounted',
-) => any;
+type ElementRender = (props: { element: HTMLElement | null; loading: boolean; container?: string | HTMLElement }, phase: 'loading' | 'mounting' | 'mounted' | 'unmounted') => any;
 
 /**
  * 获取渲染函数、插入元素
@@ -177,9 +147,7 @@ function getRender(appInstanceId: string, appContent: string, legacyRender?: HTM
     // 存在 legacyRender 遗留渲染函数
     if (legacyRender) {
       if (process.env.NODE_ENV === 'development') {
-        console.error(
-          '[qiankun] Custom rendering function is deprecated and will be removed in 3.0, you can use the container element setting instead!',
-        );
+        console.error('[qiankun] Custom rendering function is deprecated and will be removed in 3.0, you can use the container element setting instead!');
       }
 
       // 使用 legacyRender 渲染 element
@@ -226,12 +194,7 @@ function getRender(appInstanceId: string, appContent: string, legacyRender?: HTM
 }
 
 // 获取生命周期的钩子函数
-function getLifecyclesFromExports(
-  scriptExports: LifeCycles<any>,
-  appName: string,
-  global: WindowProxy,
-  globalLatestSetProp?: PropertyKey | null,
-) {
+function getLifecyclesFromExports(scriptExports: LifeCycles<any>, appName: string, global: WindowProxy, globalLatestSetProp?: PropertyKey | null) {
   // 返回生命周期钩子函数
   if (validateExportLifecycle(scriptExports)) {
     return scriptExports;
@@ -246,9 +209,7 @@ function getLifecyclesFromExports(
   }
 
   if (process.env.NODE_ENV === 'development') {
-    console.warn(
-      `[qiankun] lifecycle not found from ${appName} entry exports, fallback to get from window['${appName}']`,
-    );
+    console.warn(`[qiankun] lifecycle not found from ${appName} entry exports, fallback to get from window['${appName}']`);
   }
 
   // 当模块导出未找到时，回退到以${appName}命名的全局变量
@@ -285,6 +246,7 @@ export async function loadApp<T extends ObjectType>(
   lifeCycles?: FrameworkLifeCycles<T>,
 ): Promise<ParcelConfigObjectGetter> {
   const { entry, name: appName } = app;
+
   // 根据 appName 返回应用对应的 idName
   const appInstanceId = genAppInstanceIdByName(appName);
   const markName = `[qiankun] App ${appInstanceId} Loading`;
@@ -294,13 +256,7 @@ export async function loadApp<T extends ObjectType>(
     performanceMark(markName);
   }
 
-  const {
-    singular = false,
-    sandbox = true,
-    excludeAssetFilter,
-    globalContext = window,
-    ...importEntryOpts
-  } = configuration;
+  const { singular = false, sandbox = true, excludeAssetFilter, globalContext = window, ...importEntryOpts } = configuration;
 
   /**
    * 依赖 import-html-entry 第三方库，获取微应用的入口 html 内容和脚本执行器
@@ -319,44 +275,30 @@ export async function loadApp<T extends ObjectType>(
     await (prevAppUnmountedDeferred && prevAppUnmountedDeferred.promise);
   }
 
-  // 制作沙箱
+  // 制作 Wrapper 包裹 appContent <div id="${getWrapperId( name )}
   const appContent = getDefaultTplWrapper(appInstanceId, sandbox)(template);
+
   // 是否严格样式隔离
   const strictStyleIsolation = typeof sandbox === 'object' && !!sandbox.strictStyleIsolation;
 
   if (process.env.NODE_ENV === 'development' && strictStyleIsolation) {
-    console.warn(
-      "[qiankun] strictStyleIsolation configuration will be removed in 3.0, pls don't depend on it or use experimentalStyleIsolation instead!",
-    );
+    console.warn("[qiankun] strictStyleIsolation configuration will be removed in 3.0, pls don't depend on it or use experimentalStyleIsolation instead!");
   }
 
-  // 是否启动 css 沙箱
+  // 是否启动 scopedCSS 沙箱
   const scopedCSS = isEnableScopedCSS(sandbox);
 
-  let initialAppWrapperElement: HTMLElement | null = createElement(
-    appContent,
-    strictStyleIsolation,
-    scopedCSS,
-    appInstanceId,
-  );
+  let initialAppWrapperElement: HTMLElement | null = createElement(appContent, strictStyleIsolation, scopedCSS, appInstanceId);
 
   const initialContainer = 'container' in app ? app.container : undefined;
   const legacyRender = 'render' in app ? app.render : undefined;
 
   // 获取渲染函数
   const render = getRender(appInstanceId, appContent, legacyRender);
-
-  // 第一次加载设置应用可见区域 dom 结构
-  // 确保每次应用加载前容器 dom 结构已经设置完毕
+  // 利用渲染函数插入新的 element 节点
   render({ element: initialAppWrapperElement, loading: true, container: initialContainer }, 'loading');
 
-  const initialAppWrapperGetter = getAppWrapperGetter(
-    appInstanceId,
-    !!legacyRender,
-    strictStyleIsolation,
-    scopedCSS,
-    () => initialAppWrapperElement,
-  );
+  const initialAppWrapperGetter = getAppWrapperGetter(appInstanceId, !!legacyRender, strictStyleIsolation, scopedCSS, () => initialAppWrapperElement);
 
   let global = globalContext;
   let mountSandbox = () => Promise.resolve();
@@ -366,17 +308,10 @@ export async function loadApp<T extends ObjectType>(
   // 默认开启 speedy 模式
   const speedySandbox = typeof sandbox === 'object' ? sandbox.speedy !== false : true;
   let sandboxContainer;
+
+  // 制作沙箱容器
   if (sandbox) {
-    sandboxContainer = createSandboxContainer(
-      appInstanceId,
-      // 修复在重新挂载时应该使用严格的沙盒逻辑, see https://github.com/umijs/qiankun/issues/518
-      initialAppWrapperGetter,
-      scopedCSS,
-      useLooseSandbox,
-      excludeAssetFilter,
-      global,
-      speedySandbox,
-    );
+    sandboxContainer = createSandboxContainer(appInstanceId, initialAppWrapperGetter, scopedCSS, useLooseSandbox, excludeAssetFilter, global, speedySandbox);
     // 用沙箱的代理对象作为接下来使用的全局对象
     global = sandboxContainer.instance.proxy as typeof window;
     mountSandbox = sandboxContainer.mount;
@@ -397,16 +332,10 @@ export async function loadApp<T extends ObjectType>(
   const scriptExports: any = await execScripts(global, sandbox && !useLooseSandbox, {
     scopedGlobalVariables: speedySandbox ? cachedGlobals : [],
   });
-  const { bootstrap, mount, unmount, update } = getLifecyclesFromExports(
-    scriptExports,
-    appName,
-    global,
-    sandboxContainer?.instance?.latestSetProp,
-  );
+  const { bootstrap, mount, unmount, update } = getLifecyclesFromExports(scriptExports, appName, global, sandboxContainer?.instance?.latestSetProp);
 
   // 监听、设置 全局State
-  const { onGlobalStateChange, setGlobalState, offGlobalStateChange }: Record<string, CallableFunction> =
-    getMicroAppStateActions(appInstanceId);
+  const { onGlobalStateChange, setGlobalState, offGlobalStateChange }: Record<string, CallableFunction> = getMicroAppStateActions(appInstanceId);
 
   // FIXME temporary way
   const syncAppWrapperElement2Sandbox = (element: HTMLElement | null) => (initialAppWrapperElement = element);
@@ -439,13 +368,7 @@ export async function loadApp<T extends ObjectType>(
         // 应用挂载/重新挂载前的初始包装器元素
         async () => {
           appWrapperElement = initialAppWrapperElement;
-          appWrapperGetter = getAppWrapperGetter(
-            appInstanceId,
-            !!legacyRender,
-            strictStyleIsolation,
-            scopedCSS,
-            () => appWrapperElement,
-          );
+          appWrapperGetter = getAppWrapperGetter(appInstanceId, !!legacyRender, strictStyleIsolation, scopedCSS, () => appWrapperElement);
         },
 
         // 添加 mount hook, 确保每次应用加载前容器 dom 结构已经设置完毕
