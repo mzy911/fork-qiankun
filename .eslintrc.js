@@ -8,9 +8,12 @@ module.exports = {
     semi: ['error', 'always'],
     'no-confusing-arrow': 0,
     'no-console': 0,
-    'max-len': ['error', { code: 120, ignoreComments: true, ignoreStrings: true }],
+    'max-len': ['error', { code: 200, ignoreComments: true, ignoreStrings: true }],
     // see https://github.com/prettier/prettier/issues/3847
-    'space-before-function-paren': ['error', { anonymous: 'never', named: 'never', asyncArrow: 'always' }],
+    'space-before-function-paren': [
+      'error',
+      { anonymous: 'never', named: 'never', asyncArrow: 'always' },
+    ],
     'no-underscore-dangle': 0,
     'no-plusplus': 0,
   },

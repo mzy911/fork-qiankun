@@ -63,12 +63,16 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "lint-staged"
+      "pre-commit": "lint-staged",
+      "pre-push": "yarn test"
     }
   },
   "lint-staged": {
     "**/*.{js,ts,json,css,md}": [
       "prettier -w"
+    ],
+    "**/*.{js,ts}": [
+      "yarn lint:fix"
     ]
   },
   "jest": {

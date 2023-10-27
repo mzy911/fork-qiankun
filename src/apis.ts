@@ -25,11 +25,15 @@ const defaultUrlRerouteOnly = true;
 const frameworkStartedDefer = new Deferred<void>();
 
 // 自动降级低版本浏览器
-const autoDowngradeForLowVersionBrowser = (configuration: FrameworkConfiguration): FrameworkConfiguration => {
+const autoDowngradeForLowVersionBrowser = (
+  configuration: FrameworkConfiguration,
+): FrameworkConfiguration => {
   const { sandbox = true, singular } = configuration;
   if (sandbox) {
     if (!window.Proxy) {
-      console.warn('[qiankun] Missing window.Proxy, proxySandbox will degenerate into snapshotSandbox');
+      console.warn(
+        '[qiankun] Missing window.Proxy, proxySandbox will degenerate into snapshotSandbox',
+      );
 
       // 快照沙箱不支持非 singular 模式
       if (singular === false) {
@@ -38,7 +42,10 @@ const autoDowngradeForLowVersionBrowser = (configuration: FrameworkConfiguration
         );
       }
 
-      return { ...configuration, sandbox: typeof sandbox === 'object' ? { ...sandbox, loose: true } : { loose: true } };
+      return {
+        ...configuration,
+        sandbox: typeof sandbox === 'object' ? { ...sandbox, loose: true } : { loose: true },
+      };
     }
 
     if (
@@ -61,8 +68,7 @@ const autoDowngradeForLowVersionBrowser = (configuration: FrameworkConfiguration
 
 /**
  * 注册微应用，基于路由配置
- * @param apps = [
- *  {
+ * @param apps = [{
  *    name: 'react16',
  *    entry: '//localhost:7100',
  *    container: '#subapp-viewport',
@@ -78,7 +84,9 @@ export function registerMicroApps<T extends ObjectType>(
   lifeCycles?: FrameworkLifeCycles<T>,
 ) {
   // 防止微应用重复注册，得到所有没有被注册的微应用列表
-  const unregisteredApps = apps.filter((app) => !microApps.some((registeredApp) => registeredApp.name === app.name));
+  const unregisteredApps = apps.filter(
+    (app) => !microApps.some((registeredApp) => registeredApp.name === app.name),
+  );
   microApps = [...microApps, ...unregisteredApps];
 
   // 注册每一个微应用
@@ -148,7 +156,10 @@ export function loadMicroApp<T extends ObjectType>(
           const mount = [
             async () => {
               // 虽然在同一个容器上挂载了多个微应用程序，但我们必须等到前面的实例都卸载了，否则会导致一些并发问题
-              const prevLoadMicroApps = containerMicroApps.slice(0, containerMicroApps.indexOf(microApp));
+              const prevLoadMicroApps = containerMicroApps.slice(
+                0,
+                containerMicroApps.indexOf(microApp),
+              );
               const prevLoadMicroAppsWhichNotBroken = prevLoadMicroApps.filter(
                 (v) => v.getStatus() !== 'LOAD_ERROR' && v.getStatus() !== 'SKIP_BECAUSE_BROKEN',
               );
@@ -185,12 +196,14 @@ export function loadMicroApp<T extends ObjectType>(
       // 使用 appName 作为内部实验场景的缓存
       if ($$cacheLifecycleByAppName) {
         const parcelConfigGetterPromise = appConfigPromiseGetterMap.get(name);
-        if (parcelConfigGetterPromise) return wrapParcelConfigForRemount((await parcelConfigGetterPromise)(container));
+        if (parcelConfigGetterPromise)
+          return wrapParcelConfigForRemount((await parcelConfigGetterPromise)(container));
       }
 
       if (containerXPath) {
         const parcelConfigGetterPromise = appConfigPromiseGetterMap.get(appContainerXPathKey);
-        if (parcelConfigGetterPromise) return wrapParcelConfigForRemount((await parcelConfigGetterPromise)(container));
+        if (parcelConfigGetterPromise)
+          return wrapParcelConfigForRemount((await parcelConfigGetterPromise)(container));
       }
     }
 
@@ -200,18 +213,24 @@ export function loadMicroApp<T extends ObjectType>(
     if (container) {
       if ($$cacheLifecycleByAppName) {
         appConfigPromiseGetterMap.set(name, parcelConfigObjectGetterPromise);
-      } else if (containerXPath) appConfigPromiseGetterMap.set(appContainerXPathKey, parcelConfigObjectGetterPromise);
+      } else if (containerXPath)
+        appConfigPromiseGetterMap.set(appContainerXPathKey, parcelConfigObjectGetterPromise);
     }
 
     return (await parcelConfigObjectGetterPromise)(container);
   };
 
   if (!started && configuration?.autoStart !== false) {
-    startSingleSpa({ urlRerouteOnly: frameworkConfiguration.urlRerouteOnly ?? defaultUrlRerouteOnly });
+    startSingleSpa({
+      urlRerouteOnly: frameworkConfiguration.urlRerouteOnly ?? defaultUrlRerouteOnly,
+    });
   }
 
   // 挂载一个 Parcel 应用
-  microApp = mountRootParcel(memorizedLoadingFn, { domElement: document.createElement('div'), ...props });
+  microApp = mountRootParcel(memorizedLoadingFn, {
+    domElement: document.createElement('div'),
+    ...props,
+  });
 
   if (container) {
     if (containerXPath) {
@@ -240,7 +259,11 @@ export function start(opts: FrameworkConfiguration = {}) {
   frameworkConfiguration = { prefetch: true, singular: true, sandbox: true, ...opts };
 
   // 从这里可以看出 start 方法支持的参数不止官网文档说的那些，比如 urlRerouteOnly，这个是 single-spa 的 start 方法支持的
-  const { prefetch, urlRerouteOnly = defaultUrlRerouteOnly, ...importEntryOpts } = frameworkConfiguration;
+  const {
+    prefetch,
+    urlRerouteOnly = defaultUrlRerouteOnly,
+    ...importEntryOpts
+  } = frameworkConfiguration;
 
   if (prefetch) {
     // 执行预加载策略

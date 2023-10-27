@@ -16,20 +16,20 @@ function isPropConfigurable(target: WindowProxy, prop: PropertyKey) {
  * TODO: 为了兼容性 singular 模式下依旧使用该沙箱，等新沙箱稳定之后再切换
  */
 export default class LegacySandbox implements SandBox {
-  // 沙箱期间新增的全局变量
+  // 新增的全局变量
   private addedPropsMapInSandbox = new Map<PropertyKey, any>();
 
-  // 沙箱期间更新的全局变量
+  // 更新的全局变量
   private modifiedPropsOriginalValueMapInSandbox = new Map<PropertyKey, any>();
 
-  // 持续记录更新的(新增和修改的)全局变量的 map，用于在任意时刻做 snapshot
+  // 记录全部新增和修改的变量
   private currentUpdatedPropsValueMap = new Map<PropertyKey, any>();
 
   name: string;
 
-  proxy: WindowProxy;
+  proxy: WindowProxy; // proxy 拦截器
 
-  // 保存全局熟悉
+  // 保存全局属性
   globalContext: typeof window;
 
   type: SandBoxType;
@@ -43,12 +43,10 @@ export default class LegacySandbox implements SandBox {
   private setWindowProp(prop: PropertyKey, value: any, toDelete?: boolean) {
     if (value === undefined && toDelete) {
       // 删除属性
-      // eslint-disable-next-line no-param-reassign
       delete (this.globalContext as any)[prop];
     } else if (isPropConfigurable(this.globalContext, prop) && typeof prop !== 'symbol') {
       // 设置属性
       Object.defineProperty(this.globalContext, prop, { writable: true, configurable: true });
-      // eslint-disable-next-line no-param-reassign
       (this.globalContext as any)[prop] = value;
     }
   }
@@ -83,7 +81,11 @@ export default class LegacySandbox implements SandBox {
     this.name = name;
     this.globalContext = globalContext;
     this.type = SandBoxType.LegacyProxy;
-    const { addedPropsMapInSandbox, modifiedPropsOriginalValueMapInSandbox, currentUpdatedPropsValueMap } = this;
+    const {
+      addedPropsMapInSandbox,
+      modifiedPropsOriginalValueMapInSandbox,
+      currentUpdatedPropsValueMap,
+    } = this;
 
     const rawWindow = globalContext;
     const fakeWindow = Object.create(null) as Window;
@@ -115,7 +117,9 @@ export default class LegacySandbox implements SandBox {
       }
 
       if (process.env.NODE_ENV === 'development') {
-        console.warn(`[qiankun] Set window.${p.toString()} while sandbox destroyed or inactive in ${name}!`);
+        console.warn(
+          `[qiankun] Set window.${p.toString()} while sandbox destroyed or inactive in ${name}!`,
+        );
       }
 
       // 在 strict-mode 下，Proxy 的 handler.set 返回 false 会抛出 TypeError

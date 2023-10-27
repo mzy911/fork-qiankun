@@ -16,6 +16,7 @@ declare global {
   }
 }
 
+// 空闲时执行回调函数
 function idleCall(cb: IdleRequestCallback, start: number) {
   cb({
     didTimeout: false,
@@ -25,7 +26,7 @@ function idleCall(cb: IdleRequestCallback, start: number) {
   });
 }
 
-// RIC and shim for browsers setTimeout() without it idle
+// 手动拦截 requestIdleCallback 函数
 let requestIdleCallback: (cb: IdleRequestCallback) => any;
 if (typeof window.requestIdleCallback !== 'undefined') {
   requestIdleCallback = window.requestIdleCallback;
@@ -130,7 +131,8 @@ export function doPrefetchStrategy(
   prefetchStrategy: PrefetchStrategy,
   importEntryOpts?: ImportEntryOpts,
 ) {
-  const appsName2Apps = (names: string[]): AppMetadata[] => apps.filter((app) => names.includes(app.name));
+  const appsName2Apps = (names: string[]): AppMetadata[] =>
+    apps.filter((app) => names.includes(app.name));
 
   if (Array.isArray(prefetchStrategy)) {
     // 加载策略是一个数组

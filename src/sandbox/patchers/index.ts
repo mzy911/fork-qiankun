@@ -11,26 +11,6 @@ import patchHistoryListener from './historyListener';
 import patchInterval from './interval';
 import patchWindowListener from './windowListener';
 
-// 挂载时 Patch
-export function patchAtMounting(
-  appName: string,
-  elementGetter: () => HTMLElement | ShadowRoot,
-  sandbox: SandBox,
-  scopedCSS: boolean,
-  excludeAssetFilter?: CallableFunction,
-  speedySandBox?: boolean,
-): Freer[] {
-  const basePatchers = [() => patchInterval(sandbox.proxy), () => patchWindowListener(sandbox.proxy), () => patchHistoryListener()];
-
-  const patchersInSandbox = {
-    [SandBoxType.LegacyProxy]: [...basePatchers, () => patchLooseSandbox(appName, elementGetter, sandbox, true, scopedCSS, excludeAssetFilter)],
-    [SandBoxType.Proxy]: [...basePatchers, () => patchStrictSandbox(appName, elementGetter, sandbox, true, scopedCSS, excludeAssetFilter, speedySandBox)],
-    [SandBoxType.Snapshot]: [...basePatchers, () => patchLooseSandbox(appName, elementGetter, sandbox, true, scopedCSS, excludeAssetFilter)],
-  };
-
-  return patchersInSandbox[sandbox.type]?.map((patch) => patch());
-}
-
 // 初始化时 Patch
 export function patchAtBootstrapping(
   appName: string,
@@ -41,9 +21,68 @@ export function patchAtBootstrapping(
   speedySandBox?: boolean,
 ): Freer[] {
   const patchersInSandbox = {
-    [SandBoxType.LegacyProxy]: [() => patchLooseSandbox(appName, elementGetter, sandbox, false, scopedCSS, excludeAssetFilter)],
-    [SandBoxType.Proxy]: [() => patchStrictSandbox(appName, elementGetter, sandbox, false, scopedCSS, excludeAssetFilter, speedySandBox)],
-    [SandBoxType.Snapshot]: [() => patchLooseSandbox(appName, elementGetter, sandbox, false, scopedCSS, excludeAssetFilter)],
+    [SandBoxType.LegacyProxy]: [
+      () =>
+        patchLooseSandbox(appName, elementGetter, sandbox, false, scopedCSS, excludeAssetFilter),
+    ],
+    [SandBoxType.Proxy]: [
+      () =>
+        patchStrictSandbox(
+          appName,
+          elementGetter,
+          sandbox,
+          false,
+          scopedCSS,
+          excludeAssetFilter,
+          speedySandBox,
+        ),
+    ],
+    [SandBoxType.Snapshot]: [
+      () =>
+        patchLooseSandbox(appName, elementGetter, sandbox, false, scopedCSS, excludeAssetFilter),
+    ],
+  };
+
+  return patchersInSandbox[sandbox.type]?.map((patch) => patch());
+}
+
+// 挂载时 Patch
+export function patchAtMounting(
+  appName: string,
+  elementGetter: () => HTMLElement | ShadowRoot,
+  sandbox: SandBox,
+  scopedCSS: boolean,
+  excludeAssetFilter?: CallableFunction,
+  speedySandBox?: boolean,
+): Freer[] {
+  const basePatchers = [
+    () => patchInterval(sandbox.proxy),
+    () => patchWindowListener(sandbox.proxy),
+    () => patchHistoryListener(),
+  ];
+
+  const patchersInSandbox = {
+    [SandBoxType.LegacyProxy]: [
+      ...basePatchers,
+      () => patchLooseSandbox(appName, elementGetter, sandbox, true, scopedCSS, excludeAssetFilter),
+    ],
+    [SandBoxType.Proxy]: [
+      ...basePatchers,
+      () =>
+        patchStrictSandbox(
+          appName,
+          elementGetter,
+          sandbox,
+          true,
+          scopedCSS,
+          excludeAssetFilter,
+          speedySandBox,
+        ),
+    ],
+    [SandBoxType.Snapshot]: [
+      ...basePatchers,
+      () => patchLooseSandbox(appName, elementGetter, sandbox, true, scopedCSS, excludeAssetFilter),
+    ],
   };
 
   return patchersInSandbox[sandbox.type]?.map((patch) => patch());

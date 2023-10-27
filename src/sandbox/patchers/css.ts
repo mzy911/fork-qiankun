@@ -33,13 +33,13 @@ const rawDocumentBodyAppend = HTMLBodyElement.prototype.appendChild;
 export class ScopedCSS {
   private static ModifiedTag = 'Symbol(style-modified-qiankun)';
   private sheet: StyleSheet;
-  private swapNode: HTMLStyleElement;
+  private swapNode: HTMLStyleElement; // 外部样式表的设定
 
   constructor() {
     const styleNode = document.createElement('style');
     rawDocumentBodyAppend.call(document.body, styleNode);
     this.swapNode = styleNode;
-    this.sheet = styleNode.sheet!;
+    this.sheet = styleNode.sheet!; // CSSStyleSheet 对象,允许您检查和修改样式表中包含的规则列表
     this.sheet.disabled = true;
   }
 
@@ -60,14 +60,11 @@ export class ScopedCSS {
     }
 
     if (styleNode.textContent !== '') {
-      // 创建一个文本节点，内容为 style 节点内的样式内容
       const textNode = document.createTextNode(styleNode.textContent || '');
-      // swapNode 是 ScopedCss 类实例化时创建的一个空 style 节点，将样式内容添加到这个节点下
       this.swapNode.appendChild(textNode);
-      const sheet = this.swapNode.sheet as any; // type is missing
+      const sheet = this.swapNode.sheet as any;
       const rules = arrayify<CSSRule>(sheet?.cssRules ?? []);
       const css = this.rewrite(rules, prefix);
-      // eslint-disable-next-line no-param-reassign
       styleNode.textContent = css;
 
       // cleanup
@@ -76,8 +73,9 @@ export class ScopedCSS {
       return;
     }
 
-    // 走到这里说明样式节点为空
-    // 创建并返回一个新的 MutationObserver 它会在指定的DOM发生变化时被调用
+    // 创建 MutationObserver 对象
+    // 1、走到这里说明 styleNode.textContent 为空
+    // 2、创建并返回一个新的 MutationObserver 它会在指定的 DOM 发生变化时被调用
     const mutator = new MutationObserver((mutations) => {
       for (let i = 0; i < mutations.length; i += 1) {
         const mutation = mutations[i];
@@ -93,30 +91,17 @@ export class ScopedCSS {
           const sheet = styleNode.sheet as any;
           const rules = arrayify<CSSRule>(sheet?.cssRules ?? []);
           const css = this.rewrite(rules, prefix);
-
-          // eslint-disable-next-line no-param-reassign
           styleNode.textContent = css;
-          // eslint-disable-next-line no-param-reassign
           (styleNode as any)[ScopedCSS.ModifiedTag] = true;
         }
       }
     });
 
     // 观察 styleNode 节点，当其子节点发生变化时调用 callback 即 实例化时传递的函数
-    // since observer will be deleted when node be removed
-    // we dont need create a cleanup function manually
-    // see https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver/disconnect
     mutator.observe(styleNode, { childList: true });
   }
 
-  /**
-   * 重写样式选择器，都是在 ruleStyle 中处理的：
-   *  含有根元素选择器的情况：用前缀替换掉选择器中的根元素选择器部分，
-   *  普通选择器：将前缀插到第一个选择器的后面
-   *
-   * @param rules 样式规则
-   * @param prefix 前缀 `div[data-qiankun]=${appName}`
-   */
+  // 重写样式选择器
   private rewrite(rules: CSSRule[], prefix: string = '') {
     let css = '';
 
@@ -172,7 +157,6 @@ export class ScopedCSS {
   private ruleStyle(rule: CSSStyleRule, prefix: string) {
     const rootSelectorRE = /((?:[^\w\-.#]|^)(body|html|:root))/gm;
     const rootCombinationRE = /(html[^\w{[]+)/gm;
-
     const selector = rule.selectorText.trim();
 
     let cssText = '';
@@ -263,7 +247,9 @@ export const process = (
 
   // 目前支持 style 标签
   if (stylesheetElement.tagName === 'LINK') {
-    console.warn('Feature: sandbox.experimentalStyleIsolation is not support for link element yet.');
+    console.warn(
+      'Feature: sandbox.experimentalStyleIsolation is not support for link element yet.',
+    );
   }
 
   // 微应用模版
