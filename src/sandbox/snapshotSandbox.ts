@@ -25,8 +25,10 @@ export default class SnapshotSandbox implements SandBox {
 
   sandboxRunning = true;
 
+  // 存储属性快照
   private windowSnapshot!: Window;
 
+  // 修改的属性对象
   private modifyPropsMap: Record<any, any> = {};
 
   constructor(name: string) {
@@ -38,11 +40,13 @@ export default class SnapshotSandbox implements SandBox {
   active() {
     // 记录当前快照
     this.windowSnapshot = {} as Window;
+
+    // 从 window 上获取属性
     iter(window, (prop) => {
       this.windowSnapshot[prop] = window[prop];
     });
 
-    // 恢复之前的变更
+    // 激活恢复快照数据
     Object.keys(this.modifyPropsMap).forEach((p: any) => {
       window[p] = this.modifyPropsMap[p];
     });
@@ -62,7 +66,10 @@ export default class SnapshotSandbox implements SandBox {
     });
 
     if (process.env.NODE_ENV === 'development') {
-      console.info(`[qiankun:sandbox] ${this.name} origin window restore...`, Object.keys(this.modifyPropsMap));
+      console.info(
+        `[qiankun:sandbox] ${this.name} origin window restore...`,
+        Object.keys(this.modifyPropsMap),
+      );
     }
 
     this.sandboxRunning = false;

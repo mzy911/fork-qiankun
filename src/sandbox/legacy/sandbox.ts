@@ -16,10 +16,10 @@ function isPropConfigurable(target: WindowProxy, prop: PropertyKey) {
  * TODO: 为了兼容性 singular 模式下依旧使用该沙箱，等新沙箱稳定之后再切换
  */
 export default class LegacySandbox implements SandBox {
-  // 新增的全局变量
+  // 新增的变量
   private addedPropsMapInSandbox = new Map<PropertyKey, any>();
 
-  // 更新的全局变量
+  // 更新的变量
   private modifiedPropsOriginalValueMapInSandbox = new Map<PropertyKey, any>();
 
   // 记录全部新增和修改的变量
@@ -70,7 +70,6 @@ export default class LegacySandbox implements SandBox {
     }
 
     // renderSandboxSnapshot = snapshot(currentUpdatedPropsValueMapForSnapshot);
-    // restore global props to initial snapshot
     this.modifiedPropsOriginalValueMapInSandbox.forEach((v, p) => this.setWindowProp(p, v));
     this.addedPropsMapInSandbox.forEach((_, p) => this.setWindowProp(p, undefined, true));
 

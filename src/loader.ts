@@ -68,12 +68,8 @@ async function validateSingularMode<T extends ObjectType>(
 const supportShadowDOM = !!document.head.attachShadow || !!(document.head as any).createShadowRoot;
 
 /**
- * 创建 Element、a：利用 attachShadow 样式隔离 b：setAttribute(css.QiankunCSSRewriteAttr, appInstanceId)
  *  1、将 appContent 由字符串模版转换成 html dom 元素
- *  2、如果需要开启严格样式隔离，则将 appContent 的子元素即微应用的入口模版用 shadow dom 包裹起来，达到样式严格隔离的目的
- * @param appContent = `<div id="__qiankun_microapp_wrapper_for_${appInstanceId}__" data-name="${appName}">${template}</div>`
- * @param strictStyleIsolation 是否开启严格样式隔离
- * @param scopedCSS 实验性的样式隔离，如果开启了严格样式隔离，则 scoped css 就为 false
+ *  2、通过 ShadowDOM 来实现 dom 的隔离、乾坤设置 CSS 样式隔离
  */
 function createElement(
   appContent: string,
@@ -81,12 +77,12 @@ function createElement(
   scopedCSS: boolean,
   appInstanceId: string,
 ): HTMLElement {
-  // 创建一个 div 元素
+  // 将字符串转为DOM元素返回
   const containerElement = document.createElement('div');
   containerElement.innerHTML = appContent;
   const appElement = containerElement.firstChild as HTMLElement;
 
-  // 如果开启了严格的样式隔离
+  // 通过 ShadowDOM 来实现 dom 的隔离
   if (strictStyleIsolation) {
     // 利用 ShadowDOM 隔离外部环境用于封装组件
     if (!supportShadowDOM) {
@@ -114,8 +110,8 @@ function createElement(
     }
   }
 
+  // 设置 CSS 样式隔离
   if (scopedCSS) {
-    // 给 appElement 设置 'data-qiankun' 属性
     const attr = appElement.getAttribute(css.QiankunCSSRewriteAttr);
     if (!attr) {
       appElement.setAttribute(css.QiankunCSSRewriteAttr, appInstanceId);
@@ -369,7 +365,7 @@ export async function loadApp<T extends ObjectType>(
   const speedySandbox = typeof sandbox === 'object' ? sandbox.speedy !== false : true;
   let sandboxContainer;
 
-  // 制作沙箱容器
+  // 全局变量的隔离(JS沙箱)
   if (sandbox) {
     sandboxContainer = createSandboxContainer(
       appInstanceId,

@@ -14,8 +14,8 @@ export { css } from './patchers';
 // 生成应用运行时沙箱
 export function createSandboxContainer(
   appName: string,
-  elementGetter: () => HTMLElement | ShadowRoot,
-  scopedCSS: boolean,
+  elementGetter: () => HTMLElement | ShadowRoot, // 检查是否有无包裹的dom元素
+  scopedCSS: boolean, // 是否已经被隔离状态
   useLooseSandbox?: boolean, // 使用松散沙箱
   excludeAssetFilter?: (url: string) => boolean,
   globalContext?: typeof window,
@@ -27,9 +27,13 @@ export function createSandboxContainer(
   let sandbox: SandBox;
   if (window.Proxy) {
     sandbox = useLooseSandbox
-      ? new LegacySandbox(appName, globalContext)
-      : new ProxySandbox(appName, globalContext, { speedy: !!speedySandBox });
+      ? // 继承沙箱，在支持 Proxy 且用户 useLooseSandbox 时使用（ 允许修改 window 上的属性 ）
+        // 1、激活恢复值、2、卸载重置值
+        new LegacySandbox(appName, globalContext)
+      : // 代理沙箱，在支持 Proxy 时使用（ window 处于只读模式、对 window 的修改在代理对象上 ）
+        new ProxySandbox(appName, globalContext, { speedy: !!speedySandBox });
   } else {
+    // 快照沙箱，在不支持 Proxy 时使用（ 挂载时备份一份「快照」存起来，卸载时再把快照覆盖回去 ）
     sandbox = new SnapshotSandbox(appName);
   }
 

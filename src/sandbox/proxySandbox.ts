@@ -7,7 +7,12 @@ import { without } from 'lodash';
 import type { SandBox } from '../interfaces';
 import { SandBoxType } from '../interfaces';
 import { isPropertyFrozen, nativeGlobal, nextTask } from '../utils';
-import { clearCurrentRunningApp, getCurrentRunningApp, getTargetValue, setCurrentRunningApp } from './common';
+import {
+  clearCurrentRunningApp,
+  getCurrentRunningApp,
+  getTargetValue,
+  setCurrentRunningApp,
+} from './common';
 import { globals } from './globals';
 
 type SymbolTarget = 'target' | 'globalContext';
@@ -25,7 +30,11 @@ function uniq(array: Array<string | symbol>) {
 const rawObjectDefineProperty = Object.defineProperty;
 
 const variableWhiteListInDev =
-  process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development' || window.__QIANKUN_DEVELOPMENT__ ? ['__REACT_ERROR_OVERLAY_GLOBAL_HOOK__', 'event'] : [];
+  process.env.NODE_ENV === 'test' ||
+  process.env.NODE_ENV === 'development' ||
+  window.__QIANKUN_DEVELOPMENT__
+    ? ['__REACT_ERROR_OVERLAY_GLOBAL_HOOK__', 'event']
+    : [];
 
 // 白名单字段
 const globalVariableWhiteList: string[] = ['System', '__cjsWrapper', ...variableWhiteListInDev];
@@ -37,13 +46,28 @@ const mockGlobalThis = 'mockGlobalThis';
 
 // these globals should be recorded while accessing every time
 const accessingSpiedGlobals = ['document', 'top', 'parent', 'eval'];
-const overwrittenGlobals = ['window', 'self', 'globalThis', 'hasOwnProperty'].concat(inTest ? [mockGlobalThis] : []);
-export const cachedGlobals = Array.from(new Set(without(globals.concat(overwrittenGlobals).concat('requestAnimationFrame'), ...accessingSpiedGlobals)));
+const overwrittenGlobals = ['window', 'self', 'globalThis', 'hasOwnProperty'].concat(
+  inTest ? [mockGlobalThis] : [],
+);
+export const cachedGlobals = Array.from(
+  new Set(
+    without(
+      globals.concat(overwrittenGlobals).concat('requestAnimationFrame'),
+      ...accessingSpiedGlobals,
+    ),
+  ),
+);
 
 // transform cachedGlobals to object for faster element check
-const cachedGlobalObjects = cachedGlobals.reduce((acc, globalProp) => ({ ...acc, [globalProp]: true }), {});
+const cachedGlobalObjects = cachedGlobals.reduce(
+  (acc, globalProp) => ({ ...acc, [globalProp]: true }),
+  {},
+);
 
-const unscopables = without(cachedGlobals, ...accessingSpiedGlobals.concat(overwrittenGlobals)).reduce((acc, key) => ({ ...acc, [key]: true }), Object.create(null));
+const unscopables = without(
+  cachedGlobals,
+  ...accessingSpiedGlobals.concat(overwrittenGlobals),
+).reduce((acc, key) => ({ ...acc, [key]: true }), Object.create(null));
 
 const useNativeWindowForBindingsProps = new Map<PropertyKey, boolean>([
   ['fetch', true],
@@ -58,7 +82,7 @@ function createFakeWindow(globalContext: Window, speedy: boolean) {
   Object.getOwnPropertyNames(globalContext)
     .filter((p) => {
       const descriptor = Object.getOwnPropertyDescriptor(globalContext, p);
-      return !descriptor?.configurable;
+      return !descriptor?.configurable; // 不可配置属性
     })
     .forEach((p) => {
       const descriptor = Object.getOwnPropertyDescriptor(globalContext, p);
@@ -116,7 +140,9 @@ export default class ProxySandbox implements SandBox {
   // 关闭沙箱
   inactive() {
     if (process.env.NODE_ENV === 'development') {
-      console.info(`[qiankun:sandbox] ${this.name} modified global properties restore...`, [...this.updatedValueSet.keys()]);
+      console.info(`[qiankun:sandbox] ${this.name} modified global properties restore...`, [
+        ...this.updatedValueSet.keys(),
+      ]);
     }
 
     if (inTest || --activeSandboxCount === 0) {
@@ -140,7 +166,9 @@ export default class ProxySandbox implements SandBox {
   }
 
   // 白名单中未被修改的全局变量的描述符
-  globalWhitelistPrevDescriptor: { [p in (typeof globalVariableWhiteList)[number]]: PropertyDescriptor | undefined } = {};
+  globalWhitelistPrevDescriptor: {
+    [p in (typeof globalVariableWhiteList)[number]]: PropertyDescriptor | undefined;
+  } = {};
   globalContext: typeof window;
 
   constructor(name: string, globalContext = window, opts?: { speedy: boolean }) {
@@ -163,14 +191,22 @@ export default class ProxySandbox implements SandBox {
 
           // sync the property to globalContext
           if (typeof p === 'string' && globalVariableWhiteList.indexOf(p) !== -1) {
-            this.globalWhitelistPrevDescriptor[p] = Object.getOwnPropertyDescriptor(globalContext, p);
+            this.globalWhitelistPrevDescriptor[p] = Object.getOwnPropertyDescriptor(
+              globalContext,
+              p,
+            );
             globalContext[p] = value;
           } else {
             if (!target.hasOwnProperty(p) && globalContext.hasOwnProperty(p)) {
               const descriptor = Object.getOwnPropertyDescriptor(globalContext, p);
               const { writable, configurable, enumerable, set } = descriptor!;
               if (writable || set) {
-                Object.defineProperty(target, p, { configurable, enumerable, writable: true, value });
+                Object.defineProperty(target, p, {
+                  configurable,
+                  enumerable,
+                  writable: true,
+                  value,
+                });
               }
             } else {
               target[p] = value;
@@ -185,7 +221,9 @@ export default class ProxySandbox implements SandBox {
         }
 
         if (process.env.NODE_ENV === 'development') {
-          console.warn(`[qiankun] Set window.${p.toString()} while sandbox destroyed or inactive in ${name}!`);
+          console.warn(
+            `[qiankun] Set window.${p.toString()} while sandbox destroyed or inactive in ${name}!`,
+          );
         }
 
         // 在 strict-mode 下，Proxy 的 handler.set 返回 false 会抛出 TypeError
@@ -229,7 +267,11 @@ export default class ProxySandbox implements SandBox {
           return globalContext[p];
         }
 
-        const actualTarget = propertiesWithGetter.has(p) ? globalContext : p in target ? target : globalContext;
+        const actualTarget = propertiesWithGetter.has(p)
+          ? globalContext
+          : p in target
+          ? target
+          : globalContext;
         const value = actualTarget[p];
 
         if (isPropertyFrozen(actualTarget, p)) {
@@ -244,7 +286,10 @@ export default class ProxySandbox implements SandBox {
         return p in cachedGlobalObjects || p in target || p in globalContext;
       },
 
-      getOwnPropertyDescriptor(target: FakeWindow, p: string | number | symbol): PropertyDescriptor | undefined {
+      getOwnPropertyDescriptor(
+        target: FakeWindow,
+        p: string | number | symbol,
+      ): PropertyDescriptor | undefined {
         if (target.hasOwnProperty(p)) {
           const descriptor = Object.getOwnPropertyDescriptor(target, p);
           descriptorTargetMap.set(p, 'target');
