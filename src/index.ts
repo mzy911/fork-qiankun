@@ -10,7 +10,7 @@
  */
 export { loadMicroApp, registerMicroApps, start } from './apis';
 
-// 全局状态
+// 全局状态：更新状态、监听状态变化
 export { initGlobalState } from './globalState';
 
 // 沙箱

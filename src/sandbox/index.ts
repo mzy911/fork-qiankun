@@ -33,7 +33,8 @@ export function createSandboxContainer(
       : // 代理沙箱，在支持 Proxy 时使用（ window 处于只读模式、对 window 的修改在代理对象上 ）
         new ProxySandbox(appName, globalContext, { speedy: !!speedySandBox });
   } else {
-    // 快照沙箱，在不支持 Proxy 时使用（ 挂载时备份一份「快照」存起来，卸载时再把快照覆盖回去 ）
+    // 快照沙箱，在不支持 Proxy 时使用（只适用单列模式）
+    // 1、挂载前拍快照  2、记录设置应用属性  3、卸载时还原快照属性
     sandbox = new SnapshotSandbox(appName);
   }
 
